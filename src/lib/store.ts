@@ -208,31 +208,84 @@ export async function createMember(member: Member): Promise<Member> {
 }
 
 export async function modifyMember(id: string, updates: Partial<Member>): Promise<Member | null> {
-  const store = getStore();
-  if (!store.members) store.members = [];
-  const index = store.members.findIndex((m) => m.id === id);
-  if (index !== -1) {
-    store.members[index] = { ...store.members[index], ...updates };
-    saveStore(store);
-  }
+  const clean = decodeURIComponent(id).trim();
+  const lower = clean.toLowerCase();
+
+  let updatedMember: Member | null = null;
 
   try {
     const conn = await connectToDatabase();
     if (conn) {
-      await MemberModel.updateOne({ id }, { $set: updates });
+      const doc = await MemberModel.findOneAndUpdate(
+        {
+          $or: [
+            { id: clean },
+            { id: lower },
+            { registrationNumber: { $regex: new RegExp(`^${clean}$`, 'i') } },
+          ],
+        },
+        { $set: updates },
+        { new: true }
+      ).lean();
+
+      if (doc) {
+        updatedMember = {
+          id: (doc as any).id,
+          registrationNumber: (doc as any).registrationNumber,
+          name: (doc as any).name,
+          role: (doc as any).role,
+          committeeLevel: (doc as any).committeeLevel,
+          phone: (doc as any).phone,
+          bloodGroup: (doc as any).bloodGroup,
+          district: (doc as any).district,
+          upazila: (doc as any).upazila,
+          address: (doc as any).address,
+          bio: (doc as any).bio,
+          image: (doc as any).image,
+          joinedDate: (doc as any).joinedDate,
+          order: (doc as any).order,
+          createdAt: (doc as any).createdAt,
+        };
+      }
     }
   } catch (err) {
     console.error('Error updating member in Mongo:', err);
   }
 
-  return index !== -1 ? store.members[index] : null;
+  // Update in-memory fallback
+  const store = getStore();
+  if (!store.members) store.members = [];
+  const index = store.members.findIndex(
+    (m) =>
+      m.id === clean ||
+      m.id?.toLowerCase() === lower ||
+      m.registrationNumber?.toLowerCase() === lower
+  );
+  if (index !== -1) {
+    store.members[index] = { ...store.members[index], ...updates };
+    saveStore(store);
+    if (!updatedMember) updatedMember = store.members[index];
+  } else if (updatedMember) {
+    store.members.push(updatedMember);
+    saveStore(store);
+  }
+
+  return updatedMember;
 }
 
 export async function removeMember(id: string): Promise<boolean> {
+  const clean = decodeURIComponent(id).trim();
+  const lower = clean.toLowerCase();
+
   const store = getStore();
   if (!store.members) return false;
   const initialLength = store.members.length;
-  store.members = store.members.filter((m) => m.id !== id);
+  store.members = store.members.filter(
+    (m) =>
+      m.id !== clean &&
+      m.id?.toLowerCase() !== lower &&
+      m.registrationNumber?.toLowerCase() !== lower
+  );
   if (store.members.length !== initialLength) {
     saveStore(store);
   }
@@ -240,7 +293,13 @@ export async function removeMember(id: string): Promise<boolean> {
   try {
     const conn = await connectToDatabase();
     if (conn) {
-      await MemberModel.deleteOne({ id });
+      await MemberModel.deleteOne({
+        $or: [
+          { id: clean },
+          { id: lower },
+          { registrationNumber: { $regex: new RegExp(`^${clean}$`, 'i') } },
+        ],
+      });
       return true;
     }
   } catch (err) {

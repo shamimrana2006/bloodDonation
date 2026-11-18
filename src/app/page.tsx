@@ -2,6 +2,7 @@ import { fetchDonors, fetchRequests, fetchNotices, fetchMembers } from '@/lib/st
 import { HomeClient } from '@/components/home/HomeClient';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function HomePage() {
   const [donors, requests, notices, members] = await Promise.all([

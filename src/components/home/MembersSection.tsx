@@ -245,16 +245,23 @@ export function MembersSection({ members }: MembersSectionProps) {
                             <img
                               src={member.image}
                               alt={member.name}
+                              referrerPolicy="no-referrer"
                               className="object-cover w-full h-full rounded-xl"
                               onError={(e) => {
-                                (e.target as HTMLElement).style.display = "none";
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = "none";
+                                const fallback = target.nextElementSibling as HTMLElement;
+                                if (fallback) fallback.classList.remove("hidden");
                               }}
                             />
-                          ) : (
-                            <div className="w-full h-full rounded-xl bg-gradient-to-br from-blood-600 to-rose-600 text-white flex items-center justify-center text-2xl font-black">
-                              {member.name.slice(0, 2)}
-                            </div>
-                          )}
+                          ) : null}
+                          <div
+                            className={`w-full h-full rounded-xl bg-gradient-to-br from-blood-600 to-rose-600 text-white flex items-center justify-center text-2xl font-black ${
+                              member.image ? "hidden" : "flex"
+                            }`}
+                          >
+                            {member.name.slice(0, 2)}
+                          </div>
                         </div>
 
                         {member.bloodGroup && (

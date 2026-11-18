@@ -97,21 +97,32 @@ export function HomeClient({
         if (res.success && res.data && res.data.length > 0) {
           setMembers((prev) => {
             const apiData: Member[] = res.data;
+            let localList: Member[] = [];
             try {
               const localStr = localStorage.getItem("bdab_local_members");
-              const localList: Member[] = localStr ? JSON.parse(localStr) : [];
-              return apiData.map((m) => {
-                if (!m.image) {
-                  const match = localList.find((l) => l.id === m.id || l.registrationNumber === m.registrationNumber);
-                  if (match && match.image) return { ...m, image: match.image };
-                  const prevM = prev.find((p) => p.id === m.id || p.registrationNumber === m.registrationNumber);
-                  if (prevM && prevM.image) return { ...m, image: prevM.image };
-                }
-                return m;
-              });
-            } catch {
-              return apiData;
-            }
+              if (localStr) localList = JSON.parse(localStr);
+            } catch {}
+
+            // Merge smartly: never replace an existing image with an empty string
+            return apiData.map((apiM) => {
+              if (apiM.image) return apiM;
+
+              const prevM = prev.find(
+                (p) => p.id === apiM.id || p.registrationNumber === apiM.registrationNumber
+              );
+              if (prevM && prevM.image) {
+                return { ...apiM, image: prevM.image };
+              }
+
+              const localM = localList.find(
+                (l) => l.id === apiM.id || l.registrationNumber === apiM.registrationNumber
+              );
+              if (localM && localM.image) {
+                return { ...apiM, image: localM.image };
+              }
+
+              return apiM;
+            });
           });
         }
       })
@@ -127,11 +138,24 @@ export function HomeClient({
 
   useEffect(() => {
     if (members && members.length > 0) {
-      // Only sync if at least one member has an image or custom data, never overwrite with empty
-      const hasImages = members.some((m) => !!m.image);
-      if (hasImages) {
-        try { localStorage.setItem("bdab_local_members", JSON.stringify(members)); } catch {}
-      }
+      try {
+        let localList: Member[] = [];
+        const localStr = localStorage.getItem("bdab_local_members");
+        if (localStr) localList = JSON.parse(localStr);
+
+        // Never overwrite a member's valid image with an empty string
+        const mergedToSave = members.map((m) => {
+          if (!m.image) {
+            const match = localList.find(
+              (l) => l.id === m.id || l.registrationNumber === m.registrationNumber
+            );
+            if (match && match.image) return { ...m, image: match.image };
+          }
+          return m;
+        });
+
+        localStorage.setItem("bdab_local_members", JSON.stringify(mergedToSave));
+      } catch {}
     }
   }, [members]);
 

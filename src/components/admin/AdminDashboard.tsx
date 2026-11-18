@@ -155,10 +155,31 @@ export function AdminDashboard({
       if (mRes.ok) {
         const mJson = await mRes.json();
         if (mJson.data && mJson.data.length > 0) {
-          setMembers(mJson.data);
-          try {
-            localStorage.setItem("bdab_local_members", JSON.stringify(mJson.data));
-          } catch {}
+          setMembers((prev) => {
+            const apiData: Member[] = mJson.data;
+            let localList: Member[] = [];
+            try {
+              const localStr = localStorage.getItem("bdab_local_members");
+              if (localStr) localList = JSON.parse(localStr);
+            } catch {}
+
+            const merged = apiData.map((apiM) => {
+              if (apiM.image) return apiM;
+              const prevM = prev.find(
+                (p) => p.id === apiM.id || p.registrationNumber === apiM.registrationNumber
+              );
+              if (prevM && prevM.image) return { ...apiM, image: prevM.image };
+              const localM = localList.find(
+                (l) => l.id === apiM.id || l.registrationNumber === apiM.registrationNumber
+              );
+              if (localM && localM.image) return { ...apiM, image: localM.image };
+              return apiM;
+            });
+            try {
+              localStorage.setItem("bdab_local_members", JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
         }
       }
       if (nRes.ok) {
@@ -202,7 +223,22 @@ export function AdminDashboard({
 
   useEffect(() => {
     if (members && members.length > 0) {
-      try { localStorage.setItem("bdab_local_members", JSON.stringify(members)); } catch {}
+      try {
+        let localList: Member[] = [];
+        const localStr = localStorage.getItem("bdab_local_members");
+        if (localStr) localList = JSON.parse(localStr);
+
+        const merged = members.map((m) => {
+          if (!m.image) {
+            const match = localList.find(
+              (l) => l.id === m.id || l.registrationNumber === m.registrationNumber
+            );
+            if (match && match.image) return { ...m, image: match.image };
+          }
+          return m;
+        });
+        localStorage.setItem("bdab_local_members", JSON.stringify(merged));
+      } catch {}
     }
   }, [members]);
 
@@ -318,39 +354,83 @@ export function AdminDashboard({
     setEditingDonor(null);
   };
 
+  // Helper: Client-side Image Compression (max 800x800, quality 0.82)
+  // Ensures any phone camera photo (even 10MB+) compresses to ~60KB so it never fails on Vercel or mobile networks
+  const compressImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = document.createElement("img");
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(event.target?.result as string);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.82));
+        };
+        img.onerror = () => resolve(event.target?.result as string);
+      };
+      reader.onerror = () => resolve("");
+    });
+  };
+
   // Member Actions
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Instant local preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setMemberImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // Upload to Cloudinary via server API
     setIsUploadingImage(true);
     setUploadError("");
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "bdab_members");
 
+    try {
+      // 1. Client-side compress to lightweight ~60KB image
+      const compressedBase64 = await compressImageFile(file);
+      if (!compressedBase64) {
+        throw new Error("ছবিটি লোড করা সম্ভব হয়নি।");
+      }
+
+      // Show instant preview
+      setMemberImagePreview(compressedBase64);
+
+      // 2. Upload to Cloudinary via server API
       const res = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: compressedBase64,
+          folder: "bdab_members",
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success && data.url) {
         setMemberImagePreview(data.url);
       } else {
-        setUploadError(data.message || "ক্লাউডিনারি-তে ছবি আপলোড ব্যর্থ হয়েছে");
+        console.warn("Cloudinary upload fallback:", data.message);
       }
     } catch (err: any) {
       console.error("Image upload error:", err);
-      setUploadError("সার্ভার ত্রুটি, ছবি ক্লাউডিনারিতে আপলোড হয়নি।");
+      setUploadError("ছবি আপলোডে কিছুটা সমস্যা হয়েছে, তবে ড্রাফট প্রিভিউ সংরক্ষিত আছে।");
     } finally {
       setIsUploadingImage(false);
     }
@@ -413,14 +493,16 @@ export function AdminDashboard({
 
     if (editingMember) {
       try {
-        await fetch(`/api/members/${editingMember.id}`, {
+        const res = await fetch(`/api/members/${editingMember.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+        const resJson = await res.json();
+        const saved = res.ok && resJson.data ? resJson.data : { ...editingMember, ...payload };
         setMembers((prev) =>
           prev.map((m) =>
-            m.id === editingMember.id ? { ...m, ...payload } : m
+            m.id === editingMember.id ? saved : m
           )
         );
       } catch {
@@ -1631,11 +1713,9 @@ export function AdminDashboard({
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blood-600 bg-white flex items-center justify-center flex-shrink-0 relative">
                   {memberImagePreview ? (
-                    <Image
+                    <img
                       src={memberImagePreview}
                       alt="Preview"
-                      width={64}
-                      height={64}
                       className="object-cover w-full h-full"
                     />
                   ) : (

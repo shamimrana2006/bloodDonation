@@ -326,7 +326,7 @@ export const INITIAL_MEMBERS: Member[] = [
     upazila: 'সরিষাবাড়ী',
     address: 'সরিষাবাড়ী উপজেলা, জামালপুর',
     bio: 'ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ-এর প্রতিষ্ঠাতা ও সার্বিক পরিচালক। মানবতার সেবায় আত্মনিবেদিত রক্তযোদ্ধা।',
-    image: '',
+    image: 'https://res.cloudinary.com/shv8opv5/image/upload/v1795026481/bdab_members/qild00rnd5jwoqcwhz03.jpg',
     joinedDate: '2020-01-01',
     order: 1,
     createdAt: '2026-01-01',

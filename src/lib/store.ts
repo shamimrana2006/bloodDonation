@@ -163,23 +163,30 @@ export async function fetchMembers(): Promise<Member[]> {
     if (conn) {
       const docs = await MemberModel.find({}).sort({ order: 1, createdAt: -1 }).lean();
       if (docs && docs.length > 0) {
-        return docs.map((m: any) => ({
-          id: m.id,
-          registrationNumber: m.registrationNumber || `BDAB-${m.id.slice(-4).toUpperCase()}`,
-          name: m.name,
-          role: m.role,
-          committeeLevel: m.committeeLevel || 'সাধারণ সদস্য',
-          phone: m.phone,
-          bloodGroup: m.bloodGroup,
-          district: m.district || 'জামালপুর',
-          upazila: m.upazila || 'সরিষাবাড়ী',
-          address: m.address,
-          bio: m.bio,
-          image: m.image,
-          joinedDate: m.joinedDate,
-          order: m.order,
-          createdAt: m.createdAt,
-        }));
+        return docs.map((m: any) => {
+          let img = m.image;
+          if (!img) {
+            const initMatch = INITIAL_MEMBERS.find((im) => im.id === m.id || im.registrationNumber === m.registrationNumber);
+            if (initMatch && initMatch.image) img = initMatch.image;
+          }
+          return {
+            id: m.id,
+            registrationNumber: m.registrationNumber || `BDAB-${m.id.slice(-4).toUpperCase()}`,
+            name: m.name,
+            role: m.role,
+            committeeLevel: m.committeeLevel || 'সাধারণ সদস্য',
+            phone: m.phone,
+            bloodGroup: m.bloodGroup,
+            district: m.district || 'জামালপুর',
+            upazila: m.upazila || 'সরিষাবাড়ী',
+            address: m.address,
+            bio: m.bio,
+            image: img,
+            joinedDate: m.joinedDate,
+            order: m.order,
+            createdAt: m.createdAt,
+          };
+        });
       }
     }
   } catch (err) {
@@ -332,6 +339,11 @@ export async function fetchMemberByIdOrReg(identifier: string): Promise<Member |
       }).lean();
 
       if (doc) {
+        let img = (doc as any).image;
+        if (!img) {
+          const initMatch = INITIAL_MEMBERS.find((im) => im.id === (doc as any).id || im.registrationNumber === (doc as any).registrationNumber);
+          if (initMatch && initMatch.image) img = initMatch.image;
+        }
         return {
           id: (doc as any).id,
           registrationNumber: (doc as any).registrationNumber || `BDAB-${(doc as any).id.slice(-4).toUpperCase()}`,
@@ -344,7 +356,7 @@ export async function fetchMemberByIdOrReg(identifier: string): Promise<Member |
           upazila: (doc as any).upazila || 'সরিষাবাড়ী',
           address: (doc as any).address,
           bio: (doc as any).bio,
-          image: (doc as any).image,
+          image: img,
           joinedDate: (doc as any).joinedDate,
           order: (doc as any).order,
           createdAt: (doc as any).createdAt,

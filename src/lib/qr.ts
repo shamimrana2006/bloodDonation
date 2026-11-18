@@ -1,16 +1,16 @@
 import QRCode from "qrcode";
 import { Member } from "./types";
 
+export const OFFICIAL_SITE_URL = "https://blooddonationassociation.vercel.app";
+
 /**
  * Returns the public single page URL for a member.
  * When a user scans the member's QR code with their phone camera,
  * this URL opens the verified single member profile on the website.
  */
 export function getMemberProfileUrl(identifier: string): string {
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}/member/${encodeURIComponent(identifier)}`;
-  }
-  return `/member/${encodeURIComponent(identifier)}`;
+  // Connects directly to the user's official domain: https://blooddonationassociation.vercel.app
+  return `${OFFICIAL_SITE_URL}/member/${encodeURIComponent(identifier)}`;
 }
 
 /**

@@ -3,7 +3,7 @@ import './globals.css';
 import { DeveloperModal } from '@/components/common/DeveloperModal';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://bdab-blood.vercel.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://blooddonationassociation.vercel.app'),
   title: 'ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ | Blood Donation Association Bangladesh',
   description: 'ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ - মানবতার সেবায়, মানুষের কল্যাণে। সরিষাবাড়ী, জামালপুর। বিনামূল্যে রক্তদান ও মানবিক স্বেচ্ছাসেবী সংগঠন।',
   icons: {

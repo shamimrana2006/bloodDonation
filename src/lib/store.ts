@@ -292,13 +292,22 @@ export async function fetchMemberByIdOrReg(identifier: string): Promise<Member |
 
   // Memory fallback
   const store = getStore();
-  const found = (store.members || []).find(
+  const list = (store.members && store.members.length > 0) ? store.members : INITIAL_MEMBERS;
+  const found = list.find(
     (m) =>
       m.id?.toLowerCase() === lower ||
       m.registrationNumber?.toLowerCase() === lower ||
       m.phone === clean
   );
-  return found || null;
+  if (found) return found;
+
+  const foundInitial = INITIAL_MEMBERS.find(
+    (m) =>
+      m.id?.toLowerCase() === lower ||
+      m.registrationNumber?.toLowerCase() === lower ||
+      m.phone === clean
+  );
+  return foundInitial || null;
 }
 
 // Requests

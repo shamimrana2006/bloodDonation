@@ -46,39 +46,53 @@ export function MemberProfileClient({
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Fallback lookup from localStorage & INITIAL_MEMBERS if server didn't find member
+  // Always fetch latest member details and merge image from localStorage / API
   useEffect(() => {
-    if (!member && typeof window !== "undefined") {
-      const clean = decodeURIComponent(identifier).trim().toLowerCase();
-      try {
-        const localMembersStr = localStorage.getItem("bdab_local_members");
-        if (localMembersStr) {
-          const localList: Member[] = JSON.parse(localMembersStr);
-          const found = localList.find(
-            (m) =>
-              m.id?.toLowerCase() === clean ||
-              m.registrationNumber?.toLowerCase() === clean ||
-              m.phone === clean
-          );
-          if (found) {
-            setMember(found);
-            return;
-          }
-        }
-      } catch {}
+    if (typeof window === "undefined") return;
 
-      // Initial members fallback
-      const foundInInitial = INITIAL_MEMBERS.find(
-        (m) =>
-          m.id?.toLowerCase() === clean ||
-          m.registrationNumber?.toLowerCase() === clean ||
-          m.phone === clean
-      );
-      if (foundInInitial) {
-        setMember(foundInInitial);
+    const clean = decodeURIComponent(identifier).trim();
+    const lower = clean.toLowerCase();
+
+    // 1. Immediately check localStorage for saved image
+    try {
+      const localMembersStr = localStorage.getItem("bdab_local_members");
+      if (localMembersStr) {
+        const localList: Member[] = JSON.parse(localMembersStr);
+        const match = localList.find(
+          (m) =>
+            m.id?.toLowerCase() === lower ||
+            m.registrationNumber?.toLowerCase() === lower ||
+            m.phone === clean
+        );
+        if (match) {
+          setMember((prev) => {
+            if (!prev) return match;
+            if (match.image && !prev.image) {
+              return { ...prev, image: match.image };
+            }
+            return prev;
+          });
+        }
       }
-    }
-  }, [member, identifier]);
+    } catch {}
+
+    // 2. Fetch fresh member details from API / MongoDB
+    fetch(`/api/members/${encodeURIComponent(clean)}?t=${Date.now()}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setMember((prev) => {
+            if (!prev) return json.data;
+            const updated = { ...prev, ...json.data };
+            if (!updated.image && prev.image) {
+              updated.image = prev.image;
+            }
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [identifier]);
 
   const profileUrl = member ? getMemberProfileUrl(member.registrationNumber || member.id) : "";
 
@@ -262,13 +276,23 @@ export function MemberProfileClient({
                     <img
                       src={member.image}
                       alt={member.name}
+                      referrerPolicy="no-referrer"
                       className="object-cover w-full h-full"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.classList.remove("hidden");
+                      }}
                     />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-blood-600 to-rose-600 text-white flex items-center justify-center font-black text-4xl">
-                      {member.name.slice(0, 2)}
-                    </div>
-                  )}
+                  ) : null}
+                  <div
+                    className={`w-full h-full bg-gradient-to-br from-blood-600 to-rose-600 text-white flex items-center justify-center font-black text-4xl ${
+                      member.image ? "hidden" : "flex"
+                    }`}
+                  >
+                    {member.name.slice(0, 2)}
+                  </div>
                 </div>
 
                 {member.bloodGroup && (

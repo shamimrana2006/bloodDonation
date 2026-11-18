@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
@@ -37,10 +37,51 @@ export function MemberIdCardModal({
 }: MemberIdCardModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  const [currentMember, setCurrentMember] = useState<Member | null>(member);
+
+  useEffect(() => {
+    if (!member) {
+      setCurrentMember(null);
+      return;
+    }
+
+    let img = member.image;
+    // Check localStorage immediately for any local image
+    if (!img && typeof window !== "undefined") {
+      try {
+        const localStr = localStorage.getItem("bdab_local_members");
+        if (localStr) {
+          const list: Member[] = JSON.parse(localStr);
+          const match = list.find((m) => m.id === member.id || m.registrationNumber === member.registrationNumber);
+          if (match && match.image) img = match.image;
+        }
+      } catch {}
+    }
+
+    setCurrentMember({ ...member, image: img || member.image });
+
+    // Fetch fresh member details from API to ensure MongoDB image is rendered
+    const queryId = member.id || member.registrationNumber;
+    if (queryId) {
+      fetch(`/api/members/${encodeURIComponent(queryId)}?t=${Date.now()}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) {
+            setCurrentMember((prev) => ({
+              ...(prev || member),
+              ...res.data,
+              image: res.data.image || prev?.image || img,
+            }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [member]);
 
   if (!member) return null;
 
-  const profileUrl = getMemberProfileUrl(member.registrationNumber || member.id);
+  const displayMember = currentMember || member;
+  const profileUrl = getMemberProfileUrl(displayMember.registrationNumber || displayMember.id);
 
   const handlePrint = () => {
     window.print();
@@ -48,7 +89,7 @@ export function MemberIdCardModal({
 
   const handleDownloadQR = async () => {
     setDownloading(true);
-    await downloadMemberQRCode(member);
+    await downloadMemberQRCode(displayMember);
     setDownloading(false);
   };
 
@@ -105,22 +146,32 @@ export function MemberIdCardModal({
               {/* Photo */}
               <div className="relative flex-shrink-0">
                 <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-blood-600 bg-white shadow-md flex items-center justify-center">
-                  {member.image ? (
+                  {displayMember.image ? (
                     <img
-                      src={member.image}
-                      alt={member.name}
+                      src={displayMember.image}
+                      alt={displayMember.name}
+                      referrerPolicy="no-referrer"
                       className="object-cover w-full h-full"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.classList.remove("hidden");
+                      }}
                     />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-blood-600 to-rose-600 text-white flex items-center justify-center font-black text-2xl">
-                      {member.name.slice(0, 2)}
-                    </div>
-                  )}
+                  ) : null}
+                  <div
+                    className={`w-full h-full bg-gradient-to-br from-blood-600 to-rose-600 text-white flex items-center justify-center font-black text-2xl ${
+                      displayMember.image ? "hidden" : "flex"
+                    }`}
+                  >
+                    {displayMember.name.slice(0, 2)}
+                  </div>
                 </div>
-                {member.bloodGroup && (
+                {displayMember.bloodGroup && (
                   <span className="absolute -bottom-2 -right-1 bg-blood-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-md border-2 border-white flex items-center space-x-0.5">
                     <FaDroplet className="text-[9px]" />
-                    <span>{member.bloodGroup}</span>
+                    <span>{displayMember.bloodGroup}</span>
                   </span>
                 )}
               </div>
@@ -129,10 +180,10 @@ export function MemberIdCardModal({
               <div className="flex-1 min-w-0 text-center sm:text-left space-y-1.5">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 leading-tight">
-                    {member.name}
+                    {displayMember.name}
                   </h3>
                   <div className="inline-block mt-0.5 px-2.5 py-0.5 bg-blood-100 border border-blood-200 text-blood-700 text-xs font-bold rounded-lg">
-                    {member.role}
+                    {displayMember.role}
                   </div>
                 </div>
 
@@ -140,25 +191,25 @@ export function MemberIdCardModal({
                   <div className="flex items-center justify-center sm:justify-start space-x-1.5">
                     <span className="text-slate-400 font-bold">কমিটি:</span>
                     <span className="font-extrabold text-slate-800">
-                      {member.committeeLevel || "কেন্দ্রীয় কমিটি"}
+                      {displayMember.committeeLevel || "কেন্দ্রীয় কমিটি"}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-center sm:justify-start space-x-1.5">
                     <span className="text-slate-400 font-bold">রেজিস্ট্রেশন নং:</span>
                     <span className="font-mono font-black text-blood-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
-                      {member.registrationNumber || member.id}
+                      {displayMember.registrationNumber || displayMember.id}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-center sm:justify-start space-x-1.5">
                     <FaPhone className="text-[10px] text-blood-500" />
-                    <span className="font-bold text-slate-800">{member.phone}</span>
+                    <span className="font-bold text-slate-800">{displayMember.phone}</span>
                   </div>
 
                   <div className="flex items-center justify-center sm:justify-start space-x-1.5">
                     <FaLocationDot className="text-[10px] text-blood-500" />
-                    <span>{member.address || `${member.upazila || "সরিষাবাড়ী"}, ${member.district}`}</span>
+                    <span>{displayMember.address || `${displayMember.upazila || "সরিষাবাড়ী"}, ${displayMember.district}`}</span>
                   </div>
                 </div>
               </div>
@@ -168,7 +219,7 @@ export function MemberIdCardModal({
             <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Link
-                  href={`/member/${member.registrationNumber || member.id}`}
+                  href={`/member/${displayMember.registrationNumber || displayMember.id}`}
                   className="p-1.5 bg-white rounded-xl border border-slate-300 shadow-xs flex-shrink-0 hover:ring-2 hover:ring-blood-500 transition-all group"
                   title="ক্লিক করে মেম্বার প্রোফাইল পেজ দেখুন"
                 >
@@ -201,7 +252,7 @@ export function MemberIdCardModal({
           {/* Action Buttons Row - Responsive 2x2 grid on mobile, flex on desktop */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-between gap-2 pt-2">
             <Link
-              href={`/member/${member.registrationNumber || member.id}`}
+              href={`/member/${displayMember.registrationNumber || displayMember.id}`}
               className="inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-blood-300 border border-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
             >
               <FaArrowUpRightFromSquare className="mr-1.5 text-[10px] flex-shrink-0" />

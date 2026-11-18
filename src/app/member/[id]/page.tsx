@@ -3,6 +3,7 @@ import { fetchMemberByIdOrReg } from "@/lib/store";
 import { MemberProfileClient } from "@/components/member/MemberProfileClient";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface MemberPageProps {
   params: {

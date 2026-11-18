@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import {
   FaLock,
   FaRightFromBracket,
@@ -74,6 +75,10 @@ export function AdminDashboard({
 
   // Filters for Requests
   const [requestStatusFilter, setRequestStatusFilter] = useState<string>("all");
+
+  // Filters for Members
+  const [adminMemberFilter, setAdminMemberFilter] = useState<string>("all");
+  const [adminMemberSearch, setAdminMemberSearch] = useState<string>("");
 
   // Modals
   const [isDonorModalOpen, setIsDonorModalOpen] = useState(false);
@@ -325,8 +330,12 @@ export function AdminDashboard({
     const form = e.currentTarget;
     const name = (form.elements.namedItem("memberName") as HTMLInputElement).value;
     const role = (form.elements.namedItem("memberRole") as HTMLInputElement).value;
+    const committeeLevel = (form.elements.namedItem("memberCommitteeLevel") as HTMLSelectElement).value as any;
+    const regNo = (form.elements.namedItem("memberRegNo") as HTMLInputElement).value.trim();
     const phone = (form.elements.namedItem("memberPhone") as HTMLInputElement).value;
     const bloodGroup = (form.elements.namedItem("memberBloodGroup") as HTMLSelectElement).value as BloodGroup;
+    const district = (form.elements.namedItem("memberDistrict") as HTMLInputElement).value.trim() || "জামালপুর";
+    const upazila = (form.elements.namedItem("memberUpazila") as HTMLInputElement).value.trim() || "সরিষাবাড়ী";
     const address = (form.elements.namedItem("memberAddress") as HTMLInputElement).value;
     const bio = (form.elements.namedItem("memberBio") as HTMLTextAreaElement).value;
     const order = parseInt((form.elements.namedItem("memberOrder") as HTMLInputElement).value, 10) || 99;
@@ -334,8 +343,12 @@ export function AdminDashboard({
     const payload: Partial<Member> = {
       name,
       role,
+      committeeLevel,
+      registrationNumber: regNo || (editingMember?.registrationNumber ? editingMember.registrationNumber : undefined),
       phone,
       bloodGroup,
+      district,
+      upazila,
       address,
       bio,
       order,
@@ -1155,7 +1168,7 @@ export function AdminDashboard({
                   সদস্য ও পরিচালনা কমিটি ব্যবস্থাপনা
                 </h3>
                 <p className="text-xs text-slate-500">
-                  সদস্যদের নাম, পদবী, মোবাইল, ঠিকানা ও ছবি যুক্ত বা পরিবর্তন করুন
+                  সদস্যদের নাম, পদবী, কমিটি স্তর, রেজিস্ট্রেশন নং, মোবাইল, ঠিকানা ও ছবি যুক্ত বা পরিবর্তন করুন
                 </p>
               </div>
 
@@ -1172,51 +1185,128 @@ export function AdminDashboard({
               </Button>
             </div>
 
+            {/* Filter and Search Bar for Admin Members */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { label: "সকল সদস্য", value: "all" },
+                  { label: "★ কেন্দ্রীয় কমিটি", value: "কেন্দ্রীয় কমিটি" },
+                  { label: "জেলা কমিটি", value: "জেলা কমিটি" },
+                  { label: "উপজেলা কমিটি", value: "উপজেলা কমিটি" },
+                  { label: "সাধারণ সদস্য", value: "সাধারণ সদস্য" },
+                ].map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setAdminMemberFilter(f.value)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      adminMemberFilter === f.value
+                        ? "bg-blood-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative">
+                <Input
+                  placeholder="রেজিস্ট্রেশন নং, মোবাইল বা নাম..."
+                  value={adminMemberSearch}
+                  onChange={(e) => setAdminMemberSearch(e.target.value)}
+                  className="pl-8 h-9 text-xs w-60"
+                />
+                <FaMagnifyingGlass className="absolute left-2.5 top-2.5 text-slate-400 text-xs" />
+              </div>
+            </div>
+
             {/* Members Grid / Table */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {members.map((member) => (
+              {members
+                .filter((m) => {
+                  if (adminMemberFilter !== "all" && m.committeeLevel !== adminMemberFilter) {
+                    return false;
+                  }
+                  if (adminMemberSearch.trim()) {
+                    const q = adminMemberSearch.toLowerCase();
+                    return (
+                      (m.registrationNumber && m.registrationNumber.toLowerCase().includes(q)) ||
+                      m.phone.includes(q) ||
+                      m.name.toLowerCase().includes(q) ||
+                      m.role.toLowerCase().includes(q) ||
+                      (m.district && m.district.toLowerCase().includes(q))
+                    );
+                  }
+                  return true;
+                })
+                .map((member) => (
                 <div
                   key={member.id}
                   className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                 >
-                  <div className="flex items-start space-x-3.5">
-                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blood-600 bg-slate-100 flex-shrink-0 flex items-center justify-center">
-                      {member.image ? (
-                        <Image
-                          src={member.image}
-                          alt={member.name}
-                          width={64}
-                          height={64}
-                          className="object-cover w-full h-full"
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <span className="font-mono text-[10px] font-bold text-blood-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                        {member.registrationNumber || member.id}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                        {member.committeeLevel || "কেন্দ্রীয় কমিটি"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-start space-x-3.5">
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-blood-600 bg-slate-100 flex-shrink-0 flex items-center justify-center">
+                        {member.image ? (
+                          <Image
+                            src={member.image}
+                            alt={member.name}
+                            width={64}
+                            height={64}
+                            className="object-cover w-full h-full"
+                          />
+                        ) : (
+                          <span className="font-black text-blood-700 text-lg">
+                            {member.name.slice(0, 2)}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-extrabold text-slate-900 text-base truncate">
+                          {member.name}
+                        </h4>
+                        <p className="text-xs text-blood-600 font-bold">
+                          {member.role}
+                        </p>
+                        <p className="text-xs text-slate-600 mt-1">
+                          📞 {member.phone}
+                        </p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          📍 {member.district}{member.upazila ? `, ${member.upazila}` : ""}
+                        </p>
+                      </div>
+
+                      {/* Mini QR code */}
+                      <div className="p-1 bg-slate-50 rounded-lg border border-slate-200 flex-shrink-0" title="QR Code">
+                        <QRCodeSVG
+                          value={JSON.stringify({
+                            reg: member.registrationNumber || member.id,
+                            name: member.name,
+                            role: member.role,
+                          })}
+                          size={40}
+                          level="L"
                         />
-                      ) : (
-                        <span className="font-black text-blood-700 text-lg">
-                          {member.name.slice(0, 2)}
-                        </span>
-                      )}
+                      </div>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-extrabold text-slate-900 text-base truncate">
-                        {member.name}
-                      </h4>
-                      <p className="text-xs text-blood-600 font-bold">
-                        {member.role}
-                      </p>
-                      <p className="text-xs text-slate-600 mt-1">
-                        📞 {member.phone}
-                      </p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        📍 {member.address}
-                      </p>
-                    </div>
+                    {member.bio && (
+                      <div className="mt-3 p-2.5 bg-slate-50 rounded-xl text-[11px] text-slate-600 italic">
+                        &quot;{member.bio}&quot;
+                      </div>
+                    )}
                   </div>
-
-                  {member.bio && (
-                    <div className="mt-3 p-2.5 bg-slate-50 rounded-xl text-[11px] text-slate-600 italic">
-                      &quot;{member.bio}&quot;
-                    </div>
-                  )}
 
                   <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-[11px] text-slate-400 font-medium">
@@ -1445,13 +1535,43 @@ export function AdminDashboard({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
+                  রেজিস্ট্রেশন নম্বর (ID)
+                </label>
+                <Input
+                  name="memberRegNo"
+                  defaultValue={editingMember?.registrationNumber || ""}
+                  placeholder="যেমন: BDAB-C-001 (ফাঁকা রাখলে অটো হবে)"
+                  className="h-9 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  কমিটি স্তর (Level) *
+                </label>
+                <select
+                  name="memberCommitteeLevel"
+                  defaultValue={editingMember?.committeeLevel || "কেন্দ্রীয় কমিটি"}
+                  className="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
+                >
+                  <option value="কেন্দ্রীয় কমিটি">কেন্দ্রীয় কমিটি (Central Committee)</option>
+                  <option value="জেলা কমিটি">জেলা কমিটি (District Committee)</option>
+                  <option value="উপজেলা কমিটি">উপজেলা কমিটি (Upazila Committee)</option>
+                  <option value="সাধারণ সদস্য">সাধারণ সদস্য / রক্তযোদ্ধা</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
                   পূর্ণ নাম *
                 </label>
                 <Input
                   name="memberName"
                   required
                   defaultValue={editingMember?.name || ""}
-                  placeholder="যেমন: মোঃ আশিকুর রহমান"
+                  placeholder="যেমন: মোঃ হাফিজুর রহমান"
                   className="h-9"
                 />
               </div>
@@ -1464,7 +1584,32 @@ export function AdminDashboard({
                   name="memberRole"
                   required
                   defaultValue={editingMember?.role || ""}
-                  placeholder="যেমন: সাধারণ সম্পাদক / রক্তযোদ্ধা"
+                  placeholder="যেমন: সভাপতি / সাধারণ সম্পাদক / সহ-সভাপতি"
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  জেলা *
+                </label>
+                <Input
+                  name="memberDistrict"
+                  required
+                  defaultValue={editingMember?.district || "জামালপুর"}
+                  className="h-9"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  উপজেলা
+                </label>
+                <Input
+                  name="memberUpazila"
+                  defaultValue={editingMember?.upazila || "সরিষাবাড়ী"}
                   className="h-9"
                 />
               </div>

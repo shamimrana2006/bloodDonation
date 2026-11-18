@@ -117,10 +117,14 @@ const RequestSchema = new mongoose.Schema({
 
 const MemberSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
+  registrationNumber: { type: String, default: '' },
   name: { type: String, required: true },
   role: { type: String, required: true },
+  committeeLevel: { type: String, default: 'সাধারণ সদস্য' },
   phone: { type: String, required: true },
   bloodGroup: String,
+  district: { type: String, default: 'জামালপুর' },
+  upazila: String,
   address: String,
   bio: String,
   image: String,

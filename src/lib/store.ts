@@ -165,10 +165,14 @@ export async function fetchMembers(): Promise<Member[]> {
       if (docs && docs.length > 0) {
         return docs.map((m: any) => ({
           id: m.id,
+          registrationNumber: m.registrationNumber || `BDAB-${m.id.slice(-4).toUpperCase()}`,
           name: m.name,
           role: m.role,
+          committeeLevel: m.committeeLevel || 'সাধারণ সদস্য',
           phone: m.phone,
           bloodGroup: m.bloodGroup,
+          district: m.district || 'জামালপুর',
+          upazila: m.upazila || 'সরিষাবাড়ী',
           address: m.address,
           bio: m.bio,
           image: m.image,

@@ -4,6 +4,8 @@ export type UrgencyLevel = 'সাধারণ' | 'জরুরি' | 'খুব
 
 export type RequestStatus = 'সক্রিয়' | 'রক্তদাতা পাওয়া গেছে' | 'সম্পন্ন' | 'বাতিল';
 
+export type CommitteeLevel = 'কেন্দ্রীয় কমিটি' | 'জেলা কমিটি' | 'উপজেলা কমিটি' | 'সাধারণ সদস্য';
+
 export interface Donor {
   id: string;
   name: string;
@@ -44,10 +46,15 @@ export interface BloodRequest {
 
 export interface Member {
   id: string;
+  registrationNumber: string; // e.g. BDAB-C-001
   name: string;
-  role: string;
+  role: string; // e.g. প্রতিষ্ঠাতা ও পরিচালক, সভাপতি, সাধারণ সম্পাদক, সহ-সভাপতি, সাংগঠনিক সম্পাদক
+  committeeLevel: CommitteeLevel; // 'কেন্দ্রীয় কমিটি' | 'জেলা কমিটি' | 'উপজেলা কমিটি' | 'সাধারণ সদস্য'
   phone: string;
   bloodGroup?: BloodGroup;
+  division?: string;
+  district: string;
+  upazila?: string;
   address: string;
   bio?: string;
   image?: string;

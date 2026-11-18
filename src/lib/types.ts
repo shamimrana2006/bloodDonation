@@ -46,7 +46,7 @@ export interface BloodRequest {
 
 export interface Member {
   id: string;
-  registrationNumber: string; // e.g. BDAB-C-001
+  registrationNumber: string; // e.g. BDAB-001
   name: string;
   role: string; // e.g. প্রতিষ্ঠাতা ও পরিচালক, সভাপতি, সাধারণ সম্পাদক, সহ-সভাপতি, সাংগঠনিক সম্পাদক
   committeeLevel: CommitteeLevel; // 'কেন্দ্রীয় কমিটি' | 'জেলা কমিটি' | 'উপজেলা কমিটি' | 'সাধারণ সদস্য'

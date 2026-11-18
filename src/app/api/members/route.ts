@@ -55,14 +55,32 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate unique Registration Number if not provided
-    const committeeLevel: CommitteeLevel = body.committeeLevel || 'সাধারণ সদস্য';
-    let prefix = 'BDAB-M';
-    if (committeeLevel === 'কেন্দ্রীয় কমিটি') prefix = 'BDAB-C';
-    else if (committeeLevel === 'জেলা কমিটি') prefix = 'BDAB-D';
-    else if (committeeLevel === 'উপজেলা কমিটি') prefix = 'BDAB-U';
+    // Generate clean serial Registration Number in format: BDAB-001, BDAB-002, etc. (NO BDAB-C- or BDAB-U-)
+    let regNum = body.registrationNumber?.trim();
+    if (!regNum) {
+      const allMembers = await fetchMembers();
+      let maxSerial = 0;
+      for (const m of allMembers) {
+        if (m.registrationNumber) {
+          const match = m.registrationNumber.match(/BDAB-(\d+)/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxSerial) maxSerial = num;
+          }
+        }
+      }
+      const nextSerial = maxSerial + 1;
+      regNum = `BDAB-${String(nextSerial).padStart(3, '0')}`;
+    } else {
+      // If user typed 9 or BDAB-9 or BDAB-C-009, sanitize to BDAB-xxx
+      const numMatch = regNum.match(/(\d+)/);
+      if (numMatch) {
+        const num = parseInt(numMatch[1], 10);
+        regNum = `BDAB-${String(num).padStart(3, '0')}`;
+      }
+    }
 
-    const regNum = body.registrationNumber?.trim() || `${prefix}-${Math.floor(100 + Math.random() * 900)}`;
+    const committeeLevel: CommitteeLevel = body.committeeLevel || 'সাধারণ সদস্য';
 
     const newMember: Member = {
       id: `member-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,

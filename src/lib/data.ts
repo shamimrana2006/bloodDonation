@@ -316,7 +316,7 @@ export const MEMBER_ROLES = [
 export const INITIAL_MEMBERS: Member[] = [
   {
     id: 'member-1',
-    registrationNumber: 'BDAB-C-001',
+    registrationNumber: 'BDAB-001',
     name: 'মোঃ কামরুল হাসান (মিঠু)',
     role: 'প্রতিষ্ঠাতা ও পরিচালক',
     committeeLevel: 'কেন্দ্রীয় কমিটি',
@@ -333,7 +333,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'member-2',
-    registrationNumber: 'BDAB-C-002',
+    registrationNumber: 'BDAB-002',
     name: 'মোঃ উজ্জ্বল আহম্মেদ কাব্য',
     role: 'সহ-পরিচালক ও এডমিন',
     committeeLevel: 'কেন্দ্রীয় কমিটি',
@@ -350,7 +350,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'member-3',
-    registrationNumber: 'BDAB-C-003',
+    registrationNumber: 'BDAB-003',
     name: 'মোঃ বোরহান কবির',
     role: 'সহ-পরিচালক ও এডমিন',
     committeeLevel: 'কেন্দ্রীয় কমিটি',
@@ -367,7 +367,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'member-4',
-    registrationNumber: 'BDAB-C-004',
+    registrationNumber: 'BDAB-004',
     name: 'মোঃ হাফিজুর রহমান',
     role: 'সভাপতি',
     committeeLevel: 'কেন্দ্রীয় কমিটি',
@@ -384,7 +384,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'member-5',
-    registrationNumber: 'BDAB-C-005',
+    registrationNumber: 'BDAB-005',
     name: 'মাহমুদুল হাসান শুভ',
     role: 'সাধারণ সম্পাদক',
     committeeLevel: 'কেন্দ্রীয় কমিটি',
@@ -401,7 +401,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'member-6',
-    registrationNumber: 'BDAB-U-010',
+    registrationNumber: 'BDAB-006',
     name: 'শরীফুল ইসলাম সুমন',
     role: 'সভাপতি',
     committeeLevel: 'উপজেলা কমিটি',
@@ -418,7 +418,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'member-7',
-    registrationNumber: 'BDAB-U-011',
+    registrationNumber: 'BDAB-007',
     name: 'রাকিবুল হাসান রনি',
     role: 'সাধারণ সম্পাদক',
     committeeLevel: 'উপজেলা কমিটি',
@@ -435,7 +435,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'member-8',
-    registrationNumber: 'BDAB-D-020',
+    registrationNumber: 'BDAB-008',
     name: 'ডাঃ মোশাররফ হোসেন',
     role: 'সহ-সভাপতি',
     committeeLevel: 'জেলা কমিটি',

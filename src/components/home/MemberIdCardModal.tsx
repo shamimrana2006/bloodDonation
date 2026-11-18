@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import {
   FaXmark,
@@ -11,6 +12,9 @@ import {
   FaLocationDot,
   FaPhone,
   FaIdCard,
+  FaDownload,
+  FaArrowUpRightFromSquare,
+  FaQrcode,
 } from "react-icons/fa6";
 import {
   Dialog,
@@ -18,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Member } from "@/lib/types";
+import { downloadMemberQRCode, getMemberProfileUrl } from "@/lib/qr";
 
 interface MemberIdCardModalProps {
   member: Member | null;
@@ -31,28 +36,26 @@ export function MemberIdCardModal({
   onClose,
 }: MemberIdCardModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
 
   if (!member) return null;
 
-  const qrValue = JSON.stringify({
-    org: "BDAB",
-    reg: member.registrationNumber || member.id,
-    name: member.name,
-    role: member.role,
-    level: member.committeeLevel,
-    blood: member.bloodGroup,
-    district: member.district,
-    phone: member.phone,
-  });
+  const profileUrl = getMemberProfileUrl(member.registrationNumber || member.id);
 
   const handlePrint = () => {
     window.print();
   };
 
+  const handleDownloadQR = async () => {
+    setDownloading(true);
+    await downloadMemberQRCode(member);
+    setDownloading(false);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden border-0 bg-transparent shadow-2xl">
-        <div className="bg-slate-900/90 backdrop-blur-xl p-4 sm:p-6 rounded-3xl border border-slate-700 space-y-4">
+      <DialogContent className="sm:max-w-lg p-0 overflow-hidden border-0 bg-transparent shadow-2xl">
+        <div className="bg-slate-900/95 backdrop-blur-xl p-4 sm:p-6 rounded-3xl border border-slate-700 space-y-4">
           {/* Top Title & Close */}
           <div className="flex items-center justify-between text-white pb-2 border-b border-slate-800">
             <div className="flex items-center space-x-2 text-sm font-bold text-blood-400">
@@ -70,7 +73,7 @@ export function MemberIdCardModal({
           {/* Printable ID Card Container */}
           <div
             ref={cardRef}
-            className="relative bg-gradient-to-br from-white via-red-50/40 to-slate-50 text-slate-900 rounded-3xl p-6 border-2 border-blood-600/80 shadow-2xl overflow-hidden print:m-0 print:border-2"
+            className="relative bg-gradient-to-br from-white via-red-50/40 to-slate-50 text-slate-900 rounded-3xl p-5 sm:p-6 border-2 border-blood-600/80 shadow-2xl overflow-hidden print:m-0 print:border-2"
           >
             {/* Top Watermark & Pattern */}
             <div className="absolute top-0 right-0 w-36 h-36 bg-blood-600/10 rounded-full blur-2xl pointer-events-none" />
@@ -139,7 +142,7 @@ export function MemberIdCardModal({
                   <div className="flex items-center justify-center sm:justify-start space-x-1.5">
                     <span className="text-slate-400 font-bold">কমিটি:</span>
                     <span className="font-extrabold text-slate-800">
-                      {member.committeeLevel || "কেন্দ্রীয় কমিটি"}
+                      {member.committeeLevel || "কেন্দ্রীয় কমিটি"}
                     </span>
                   </div>
 
@@ -166,20 +169,24 @@ export function MemberIdCardModal({
             {/* Bottom QR Code & Verification Seal */}
             <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="p-1.5 bg-white rounded-xl border border-slate-300 shadow-xs flex-shrink-0">
+                <Link
+                  href={`/member/${member.registrationNumber || member.id}`}
+                  className="p-1.5 bg-white rounded-xl border border-slate-300 shadow-xs flex-shrink-0 hover:ring-2 hover:ring-blood-500 transition-all group"
+                  title="ক্লিক করে মেম্বার প্রোফাইল পেজ দেখুন"
+                >
                   <QRCodeSVG
-                    value={qrValue}
-                    size={64}
-                    level="M"
+                    value={profileUrl}
+                    size={68}
+                    level="H"
                     fgColor="#1e293b"
                   />
-                </div>
+                </Link>
                 <div className="text-[10px] text-slate-500">
-                  <p className="font-bold text-slate-700">স্ক্যান করে যাচাই করুন</p>
+                  <p className="font-bold text-slate-700">ক্যামেরা দিয়ে স্ক্যান করুন</p>
                   <p>QR Code Verification</p>
                   <p className="text-emerald-600 font-bold flex items-center gap-0.5">
                     <FaCircleCheck className="text-xs" />
-                    <span>যাচাইকৃত সদস্য</span>
+                    <span>ভেরিফাইড সদস্য</span>
                   </p>
                 </div>
               </div>
@@ -193,24 +200,45 @@ export function MemberIdCardModal({
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end space-x-3 pt-2">
-            <Button
-              onClick={handlePrint}
-              variant="outline"
-              size="sm"
-              className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 text-xs font-bold"
+          {/* Action Buttons Row */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+            <Link
+              href={`/member/${member.registrationNumber || member.id}`}
+              className="inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-blood-300 border border-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
             >
-              <FaPrint className="mr-1.5" />
-              প্রিন্ট / সেভ করুন
-            </Button>
-            <Button
-              onClick={onClose}
-              size="sm"
-              className="bg-blood-600 hover:bg-blood-700 text-white text-xs font-bold"
-            >
-              বন্ধ করুন
-            </Button>
+              <FaArrowUpRightFromSquare className="mr-1.5 text-[10px]" />
+              পূর্ণ প্রোফাইল পেজ
+            </Link>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={handleDownloadQR}
+                disabled={downloading}
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold h-9 px-3 rounded-xl shadow-xs"
+              >
+                <FaDownload className="mr-1.5 text-[10px]" />
+                {downloading ? "ডাউনলোড হচ্ছে..." : "QR ডাউনলোড"}
+              </Button>
+
+              <Button
+                onClick={handlePrint}
+                variant="outline"
+                size="sm"
+                className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 text-xs font-bold h-9 px-3 rounded-xl"
+              >
+                <FaPrint className="mr-1.5 text-[10px]" />
+                প্রিন্ট আইডি
+              </Button>
+
+              <Button
+                onClick={onClose}
+                size="sm"
+                className="bg-blood-600 hover:bg-blood-700 text-white text-xs font-bold h-9 px-3 rounded-xl"
+              >
+                বন্ধ
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

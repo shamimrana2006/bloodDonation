@@ -1,7 +1,31 @@
 import { NextResponse } from 'next/server';
-import { modifyMember, removeMember } from '@/lib/store';
+import { modifyMember, removeMember, fetchMemberByIdOrReg } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+    const member = await fetchMemberByIdOrReg(id);
+
+    if (!member) {
+      return NextResponse.json(
+        { success: false, message: 'সদস্যের তথ্য পাওয়া যায়নি' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: member });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, message: error?.message || 'Error fetching member' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function PUT(
   request: Request,

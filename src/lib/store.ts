@@ -250,6 +250,57 @@ export async function removeMember(id: string): Promise<boolean> {
   return store.members.length !== initialLength;
 }
 
+export async function fetchMemberByIdOrReg(identifier: string): Promise<Member | null> {
+  const clean = decodeURIComponent(identifier).trim();
+  const lower = clean.toLowerCase();
+
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      const doc = await MemberModel.findOne({
+        $or: [
+          { id: clean },
+          { id: lower },
+          { registrationNumber: { $regex: new RegExp(`^${clean}$`, 'i') } },
+          { phone: clean }
+        ]
+      }).lean();
+
+      if (doc) {
+        return {
+          id: (doc as any).id,
+          registrationNumber: (doc as any).registrationNumber || `BDAB-${(doc as any).id.slice(-4).toUpperCase()}`,
+          name: (doc as any).name,
+          role: (doc as any).role,
+          committeeLevel: (doc as any).committeeLevel || 'সাধারণ সদস্য',
+          phone: (doc as any).phone,
+          bloodGroup: (doc as any).bloodGroup,
+          district: (doc as any).district || 'জামালপুর',
+          upazila: (doc as any).upazila || 'সরিষাবাড়ী',
+          address: (doc as any).address,
+          bio: (doc as any).bio,
+          image: (doc as any).image,
+          joinedDate: (doc as any).joinedDate,
+          order: (doc as any).order,
+          createdAt: (doc as any).createdAt,
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching member by id from Mongo:', err);
+  }
+
+  // Memory fallback
+  const store = getStore();
+  const found = (store.members || []).find(
+    (m) =>
+      m.id?.toLowerCase() === lower ||
+      m.registrationNumber?.toLowerCase() === lower ||
+      m.phone === clean
+  );
+  return found || null;
+}
+
 // Requests
 export async function fetchRequests(): Promise<BloodRequest[]> {
   try {

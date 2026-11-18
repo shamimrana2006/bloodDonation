@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -15,11 +16,14 @@ import {
   FaFilter,
   FaShieldHeart,
   FaQrcode,
+  FaDownload,
+  FaArrowUpRightFromSquare,
 } from "react-icons/fa6";
 import { Member, CommitteeLevel } from "@/lib/types";
 import { BD_DISTRICTS } from "@/lib/data";
 import { MemberIdCardModal } from "./MemberIdCardModal";
 import { Button } from "@/components/ui/button";
+import { downloadMemberQRCode, getMemberProfileUrl } from "@/lib/qr";
 
 interface MembersSectionProps {
   members: Member[];
@@ -260,34 +264,40 @@ export function MembersSection({ members }: MembersSectionProps) {
                         )}
                       </div>
 
-                      {/* Mini QR code on card */}
+                      {/* Mini QR code on card (Scannable with mobile camera to open profile page) */}
                       <button
                         type="button"
                         onClick={() => setViewingIdCardMember(member)}
-                        className="p-1.5 bg-slate-50 hover:bg-red-50 rounded-xl border border-slate-200 transition-colors flex flex-col items-center group/qr"
-                        title="আইডি কার্ড ও কিউআর কোড দেখুন"
+                        className="p-1.5 bg-slate-50 hover:bg-red-50 rounded-xl border border-slate-200 transition-colors flex flex-col items-center group/qr shadow-2xs"
+                        title="ক্যামেরা দিয়ে স্ক্যান করে প্রোফাইল দেখুন বা আইডি কার্ড খুলুন"
                       >
                         <QRCodeSVG
-                          value={JSON.stringify({
-                            reg: member.registrationNumber || member.id,
-                            name: member.name,
-                            role: member.role,
-                          })}
-                          size={46}
-                          level="L"
+                          value={getMemberProfileUrl(member.registrationNumber || member.id)}
+                          size={48}
+                          level="M"
+                          fgColor="#1e293b"
                         />
                         <span className="text-[9px] text-slate-500 font-bold mt-1 group-hover/qr:text-blood-600 flex items-center space-x-0.5">
                           <FaQrcode className="text-[8px]" />
-                          <span>QR কার্ড</span>
+                          <span>স্ক্যান QR</span>
                         </span>
                       </button>
                     </div>
 
                     {/* Registration ID Badge */}
-                    <div className="mb-2">
+                    <div className="mb-2 flex items-center justify-between">
                       <span className="font-mono text-[11px] font-bold text-blood-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-200 inline-block">
                         রেজি: {member.registrationNumber || member.id}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => downloadMemberQRCode(member)}
+                        className="text-[10px] font-bold text-slate-500 hover:text-blood-600 flex items-center space-x-1 py-0.5 px-1.5 rounded hover:bg-slate-100 transition-colors"
+                        title="QR কোড ডাউনলোড করুন"
+                      >
+                        <FaDownload className="text-[9px]" />
+                        <span>QR সেভ</span>
+                      </button>
                     </div>
 
                     {/* Name & Role */}
@@ -339,16 +349,26 @@ export function MembersSection({ members }: MembersSectionProps) {
                       </a>
                     </div>
 
-                    {/* View Digital ID Card Button */}
-                    <Button
-                      type="button"
-                      onClick={() => setViewingIdCardMember(member)}
-                      variant="outline"
-                      className="w-full text-xs font-bold border-blood-200 text-blood-700 hover:bg-blood-50 h-8 rounded-xl"
-                    >
-                      <FaIdCard className="mr-1.5 text-blood-600" />
-                      ডিজিটাল আইডি কার্ড ও QR কোড
-                    </Button>
+                    {/* View Digital ID Card & Profile Buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        onClick={() => setViewingIdCardMember(member)}
+                        variant="outline"
+                        className="text-xs font-bold border-blood-200 text-blood-700 hover:bg-blood-50 h-8 rounded-xl px-2"
+                      >
+                        <FaIdCard className="mr-1 text-blood-600 text-xs" />
+                        <span>আইডি কার্ড</span>
+                      </Button>
+
+                      <Link
+                        href={`/member/${member.registrationNumber || member.id}`}
+                        className="inline-flex items-center justify-center text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white h-8 rounded-xl px-2 transition-colors"
+                      >
+                        <FaArrowUpRightFromSquare className="mr-1 text-[10px]" />
+                        <span>প্রোফাইল পেজ</span>
+                      </Link>
+                    </div>
                   </div>
                 </motion.div>
               );

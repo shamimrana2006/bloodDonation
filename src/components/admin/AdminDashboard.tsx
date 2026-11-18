@@ -24,7 +24,10 @@ import {
   FaImage,
   FaUserTie,
   FaUpload,
+  FaQrcode,
+  FaArrowUpRightFromSquare,
 } from "react-icons/fa6";
+import { downloadMemberQRCode, getMemberProfileUrl } from "@/lib/qr";
 import { Donor, BloodRequest, Notice, Member, BloodGroup, RequestStatus } from "@/lib/types";
 import { BLOOD_GROUPS } from "@/lib/data";
 import { formatBanglaNumber, formatBanglaDate } from "@/lib/utils";
@@ -340,11 +343,36 @@ export function AdminDashboard({
     const bio = (form.elements.namedItem("memberBio") as HTMLTextAreaElement).value;
     const order = parseInt((form.elements.namedItem("memberOrder") as HTMLInputElement).value, 10) || 99;
 
+    // Ensure clean BDAB-xxx registration number (e.g. BDAB-009, BDAB-010)
+    let finalRegNo = regNo?.trim();
+    if (!finalRegNo) {
+      if (editingMember?.registrationNumber) {
+        finalRegNo = editingMember.registrationNumber;
+      } else {
+        let maxSerial = 0;
+        members.forEach((m) => {
+          if (m.registrationNumber) {
+            const match = m.registrationNumber.match(/BDAB-(\d+)/i);
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (num > maxSerial) maxSerial = num;
+            }
+          }
+        });
+        finalRegNo = `BDAB-${String(maxSerial + 1).padStart(3, "0")}`;
+      }
+    } else {
+      const match = finalRegNo.match(/(\d+)/);
+      if (match) {
+        finalRegNo = `BDAB-${String(parseInt(match[1], 10)).padStart(3, "0")}`;
+      }
+    }
+
     const payload: Partial<Member> = {
       name,
       role,
       committeeLevel,
-      registrationNumber: regNo || (editingMember?.registrationNumber ? editingMember.registrationNumber : undefined),
+      registrationNumber: finalRegNo,
       phone,
       bloodGroup,
       district,
@@ -382,10 +410,48 @@ export function AdminDashboard({
           body: JSON.stringify(payload),
         });
         const resJson = await res.json();
-        if (resJson.success) {
+        if (resJson.success && resJson.data) {
           setMembers((prev) => [...prev, resJson.data]);
+        } else {
+          const fallbackNew: Member = {
+            id: `member-${Date.now()}`,
+            name,
+            role,
+            committeeLevel,
+            registrationNumber: finalRegNo,
+            phone,
+            bloodGroup,
+            district,
+            upazila,
+            address,
+            bio,
+            order,
+            image: memberImagePreview,
+            joinedDate: new Date().toISOString().split("T")[0],
+            createdAt: new Date().toISOString().split("T")[0],
+          };
+          setMembers((prev) => [...prev, fallbackNew]);
         }
-      } catch {}
+      } catch {
+        const fallbackNew: Member = {
+          id: `member-${Date.now()}`,
+          name,
+          role,
+          committeeLevel,
+          registrationNumber: finalRegNo,
+          phone,
+          bloodGroup,
+          district,
+          upazila,
+          address,
+          bio,
+          order,
+          image: memberImagePreview,
+          joinedDate: new Date().toISOString().split("T")[0],
+          createdAt: new Date().toISOString().split("T")[0],
+        };
+        setMembers((prev) => [...prev, fallbackNew]);
+      }
     }
 
     setIsMemberModalOpen(false);
@@ -1289,15 +1355,19 @@ export function AdminDashboard({
 
                       {/* Mini QR code */}
                       <div className="p-1 bg-slate-50 rounded-lg border border-slate-200 flex-shrink-0" title="QR Code">
-                        <QRCodeSVG
-                          value={JSON.stringify({
-                            reg: member.registrationNumber || member.id,
-                            name: member.name,
-                            role: member.role,
-                          })}
-                          size={40}
-                          level="L"
-                        />
+                        <Link
+                          href={`/member/${member.registrationNumber || member.id}`}
+                          target="_blank"
+                          title="ভেরিফাইড প্রোফাইল ও QR পেজ খুলুন"
+                          className="block hover:ring-2 hover:ring-blood-500 rounded p-0.5 transition-all"
+                        >
+                          <QRCodeSVG
+                            value={getMemberProfileUrl(member.registrationNumber || member.id)}
+                            size={42}
+                            level="M"
+                            fgColor="#1e293b"
+                          />
+                        </Link>
                       </div>
                     </div>
 
@@ -1313,7 +1383,29 @@ export function AdminDashboard({
                       ক্রম: {member.order}
                     </span>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1.5">
+                      <Button
+                        type="button"
+                        onClick={() => downloadMemberQRCode(member)}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2 text-xs font-bold text-blood-700 border-blood-200 hover:bg-blood-50"
+                        title="সদস্যের QR কোড ডাউনলোড করুন"
+                      >
+                        <FaDownload className="mr-1 text-[10px]" />
+                        QR
+                      </Button>
+
+                      <Link
+                        href={`/member/${member.registrationNumber || member.id}`}
+                        target="_blank"
+                        className="inline-flex items-center justify-center h-8 px-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+                        title="সদস্যের প্রোফাইল পেজ দেখুন"
+                      >
+                        <FaArrowUpRightFromSquare className="mr-1 text-[10px]" />
+                        পেজ
+                      </Link>
+
                       <Button
                         onClick={() => {
                           setEditingMember(member);
@@ -1540,7 +1632,7 @@ export function AdminDashboard({
                 <Input
                   name="memberRegNo"
                   defaultValue={editingMember?.registrationNumber || ""}
-                  placeholder="যেমন: BDAB-C-001 (ফাঁকা রাখলে অটো হবে)"
+                  placeholder="যেমন: BDAB-009 (ফাঁকা রাখলে স্বয়ংক্রিয়ভাবে পরবর্তী সিরিয়াল যুক্ত হবে)"
                   className="h-9 font-mono"
                 />
               </div>

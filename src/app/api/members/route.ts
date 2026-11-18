@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchMembers, createMember } from '@/lib/store';
 import { Member, CommitteeLevel } from '@/lib/types';
+import { uploadImageToCloudinary } from '@/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +83,18 @@ export async function POST(request: Request) {
 
     const committeeLevel: CommitteeLevel = body.committeeLevel || 'সাধারণ সদস্য';
 
+    let imageUrl = body.image || '';
+    if (imageUrl.startsWith('data:image/')) {
+      try {
+        const up = await uploadImageToCloudinary(imageUrl, 'bdab_members');
+        if (up.success && up.url) {
+          imageUrl = up.url;
+        }
+      } catch (err) {
+        console.error('Error auto-uploading member image to Cloudinary:', err);
+      }
+    }
+
     const newMember: Member = {
       id: `member-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       registrationNumber: regNum,
@@ -94,7 +107,7 @@ export async function POST(request: Request) {
       upazila: body.upazila?.trim() || 'সরিষাবাড়ী',
       address: body.address?.trim() || 'সরিষাবাড়ী, জামালপুর',
       bio: body.bio?.trim() || '',
-      image: body.image || '',
+      image: imageUrl,
       joinedDate: body.joinedDate || new Date().toISOString().split('T')[0],
       order: Number(body.order) || 99,
       createdAt: new Date().toISOString().split('T')[0],

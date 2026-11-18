@@ -90,6 +90,8 @@ export function AdminDashboard({
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [memberImagePreview, setMemberImagePreview] = useState<string>("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [newNoticeTitle, setNewNoticeTitle] = useState("");
@@ -317,14 +319,40 @@ export function AdminDashboard({
   };
 
   // Member Actions
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setMemberImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Instant local preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setMemberImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to Cloudinary via server API
+    setIsUploadingImage(true);
+    setUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "bdab_members");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.url) {
+        setMemberImagePreview(data.url);
+      } else {
+        setUploadError(data.message || "ক্লাউডিনারি-তে ছবি আপলোড ব্যর্থ হয়েছে");
+      }
+    } catch (err: any) {
+      console.error("Image upload error:", err);
+      setUploadError("সার্ভার ত্রুটি, ছবি ক্লাউডিনারিতে আপলোড হয়নি।");
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -1596,31 +1624,55 @@ export function AdminDashboard({
           </DialogHeader>
 
           <form onSubmit={handleSaveMember} className="space-y-3 pt-2 text-xs">
-            {/* Photo Upload & Preview */}
-            <div className="flex items-center space-x-4 p-3 bg-slate-50 rounded-2xl border border-slate-200">
-              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blood-600 bg-white flex items-center justify-center flex-shrink-0">
-                {memberImagePreview ? (
-                  <Image
-                    src={memberImagePreview}
-                    alt="Preview"
-                    width={64}
-                    height={64}
-                    className="object-cover w-full h-full"
+            {/* Photo Upload & Preview with Cloudinary */}
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blood-600 bg-white flex items-center justify-center flex-shrink-0 relative">
+                  {memberImagePreview ? (
+                    <Image
+                      src={memberImagePreview}
+                      alt="Preview"
+                      width={64}
+                      height={64}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <FaImage className="text-slate-400 text-2xl" />
+                  )}
+                  {isUploadingImage && (
+                    <div className="absolute inset-0 bg-slate-900/70 flex items-center justify-center text-white text-[9px] font-bold text-center px-1">
+                      আপলোড...
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">
+                      সদস্যের ছবি আপলোড (Cloudinary)
+                    </label>
+                    {isUploadingImage ? (
+                      <span className="text-[10px] font-bold text-amber-600 animate-pulse">
+                        আপলোড হচ্ছে...
+                      </span>
+                    ) : memberImagePreview && memberImagePreview.includes("cloudinary") ? (
+                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                        <FaCheck className="text-[9px]" /> ক্লাউডে সেভড
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileChange}
+                    disabled={isUploadingImage}
+                    className="text-xs text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blood-50 file:text-blood-700 hover:file:bg-blood-100 cursor-pointer disabled:opacity-50"
                   />
-                ) : (
-                  <FaImage className="text-slate-400 text-2xl" />
-                )}
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  সদস্যের ছবি আপলোড করুন
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageFileChange}
-                  className="text-xs text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blood-50 file:text-blood-700 hover:file:bg-blood-100 cursor-pointer"
-                />
+                  {uploadError && (
+                    <p className="text-[10px] text-red-600 font-semibold">{uploadError}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1790,9 +1842,10 @@ export function AdminDashboard({
               <Button
                 type="submit"
                 size="sm"
+                disabled={isUploadingImage}
                 className="bg-blood-600 hover:bg-blood-700 text-white font-bold"
               >
-                সংরক্ষণ করুন
+                {isUploadingImage ? "ছবি আপলোড হচ্ছে..." : "সংরক্ষণ করুন"}
               </Button>
             </div>
           </form>
@@ -1969,9 +2022,10 @@ export function AdminDashboard({
               <Button
                 type="submit"
                 size="sm"
+                disabled={isUploadingImage}
                 className="bg-blood-600 hover:bg-blood-700 text-white font-bold"
               >
-                সংরক্ষণ করুন
+                {isUploadingImage ? "ছবি আপলোড হচ্ছে..." : "সংরক্ষণ করুন"}
               </Button>
             </div>
           </form>

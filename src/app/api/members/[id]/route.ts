@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { modifyMember, removeMember, fetchMemberByIdOrReg } from '@/lib/store';
+import { uploadImageToCloudinary } from '@/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,18 @@ export async function PUT(
   try {
     const { id } = params;
     const body = await request.json();
+
+    if (body.image && body.image.startsWith('data:image/')) {
+      try {
+        const up = await uploadImageToCloudinary(body.image, 'bdab_members');
+        if (up.success && up.url) {
+          body.image = up.url;
+        }
+      } catch (err) {
+        console.error('Error auto-uploading member update image to Cloudinary:', err);
+      }
+    }
+
     const updated = await modifyMember(id, body);
 
     if (!updated) {

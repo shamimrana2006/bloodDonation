@@ -1,0 +1,51 @@
+import { NextResponse } from 'next/server';
+import { updateRequest, deleteRequest } from '@/lib/store';
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+    const body = await request.json();
+    const updated = updateRequest(id, body);
+
+    if (!updated) {
+      return NextResponse.json(
+        { success: false, message: 'রক্তের আবেদন খুঁজে পাওয়া যায়নি' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: updated });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, message: error?.message || 'Error updating request' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+    const deleted = deleteRequest(id);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, message: 'আবেদন মুছে ফেলা যায়নি বা পাওয়া যায়নি' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, message: 'আবেদন সফলভাবে মুছে ফেলা হয়েছে' });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, message: error?.message || 'Error deleting request' },
+      { status: 500 }
+    );
+  }
+}

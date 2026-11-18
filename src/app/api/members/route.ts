@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getMembers, addMember } from '@/lib/store';
+import { fetchMembers, createMember } from '@/lib/store';
 import { Member } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const list = getMembers();
+    const list = await fetchMembers();
     return NextResponse.json({ success: true, count: list.length, data: list });
   } catch (error: any) {
     return NextResponse.json(
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString().split('T')[0],
     };
 
-    const saved = addMember(newMember);
+    const saved = await createMember(newMember);
     return NextResponse.json({ success: true, data: saved }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json(

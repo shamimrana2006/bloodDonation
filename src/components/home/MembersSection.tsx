@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import {
@@ -10,6 +10,7 @@ import {
   FaLocationDot,
   FaDroplet,
   FaUserShield,
+  FaHeart,
 } from "react-icons/fa6";
 import { Member } from "@/lib/types";
 
@@ -18,13 +19,33 @@ interface MembersSectionProps {
 }
 
 export function MembersSection({ members }: MembersSectionProps) {
+  const [filter, setFilter] = useState<"all" | "leadership" | "volunteers">("all");
+
   if (!members || members.length === 0) return null;
+
+  const filteredMembers = members.filter((m) => {
+    if (filter === "leadership") {
+      return (
+        m.role.includes("পরিচালক") ||
+        m.role.includes("এডমিন") ||
+        m.role.includes("সভাপতি") ||
+        m.role.includes("সম্পাদক")
+      );
+    }
+    if (filter === "volunteers") {
+      return (
+        !m.role.includes("পরিচালক") &&
+        !m.role.includes("এডমিন")
+      );
+    }
+    return true;
+  });
 
   return (
     <section id="members" className="py-20 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14">
+        <div className="text-center max-w-3xl mx-auto mb-10">
           <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-red-100 border border-red-200 text-blood-700 text-xs font-bold mb-3">
             <FaUsers className="text-blood-600" />
             <span>আমাদের পরিচালনা পর্ষদ ও সদস্যবৃন্দ</span>
@@ -37,15 +58,52 @@ export function MembersSection({ members }: MembersSectionProps) {
           </p>
         </div>
 
+        {/* Filter Tabs */}
+        <div className="flex items-center justify-center gap-2 mb-12">
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              filter === "all"
+                ? "bg-blood-600 text-white shadow-md shadow-blood-600/30"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            সকল সদস্য ({members.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("leadership")}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              filter === "leadership"
+                ? "bg-blood-600 text-white shadow-md shadow-blood-600/30"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            পরিচালনা পরিষদ
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("volunteers")}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              filter === "volunteers"
+                ? "bg-blood-600 text-white shadow-md shadow-blood-600/30"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            স্বেচ্ছাসেবী ও রক্তযোদ্ধা
+          </button>
+        </div>
+
         {/* Members Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {members.map((member, index) => (
+          {filteredMembers.map((member, index) => (
             <motion.div
               key={member.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
+              transition={{ duration: 0.4, delay: (index % 4) * 0.05 }}
               whileHover={{ y: -6, transition: { duration: 0.2 } }}
               className="bg-slate-50/80 rounded-3xl p-6 border border-slate-200/90 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
             >

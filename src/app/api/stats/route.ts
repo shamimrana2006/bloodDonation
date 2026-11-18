@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getDonors, getRequests } from '@/lib/store';
+import { fetchDonors, fetchRequests } from '@/lib/store';
 import { HUMANITARIAN_ACTIVITIES } from '@/lib/data';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const donors = getDonors();
-    const requests = getRequests();
+    const donors = await fetchDonors();
+    const requests = await fetchRequests();
 
     const totalDonors = donors.length;
     const availableDonors = donors.filter((d) => d.isAvailable).length;

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   FaDroplet,
@@ -15,6 +15,7 @@ import {
   FaTree,
   FaBuildingColumns,
   FaHeart,
+  FaFilter,
 } from "react-icons/fa6";
 import { HUMANITARIAN_ACTIVITIES } from "@/lib/data";
 
@@ -47,11 +48,34 @@ const bgColors = [
 ];
 
 export function ActivitiesSection() {
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  const categories = [
+    { label: "সকল কার্যক্রম (১১টি)", value: "all" },
+    { label: "রক্তসেবা ও স্বাস্থ্য", value: "স্বাস্থ্যসেবা" },
+    { label: "ত্রাণ ও সামাজিক সেবা", value: "সামাজিক" },
+    { label: "পরিবেশ ও জনকল্যাণ", value: "কল্যাণ" },
+  ];
+
+  const filteredActivities = HUMANITARIAN_ACTIVITIES.filter((act) => {
+    if (selectedCategory === "all") return true;
+    if (selectedCategory === "স্বাস্থ্যসেবা") {
+      return act.category.includes("রক্ত") || act.category.includes("স্বাস্থ্য") || act.category.includes("সচেতনতা");
+    }
+    if (selectedCategory === "সামাজিক") {
+      return act.category.includes("ত্রাণ") || act.category.includes("সামাজিক") || act.category.includes("আর্থিক") || act.category.includes("দুর্যোগ");
+    }
+    if (selectedCategory === "কল্যাণ") {
+      return act.category.includes("জনকল্যাণ") || act.category.includes("পরিবেশ") || act.category.includes("প্রশাসন");
+    }
+    return true;
+  });
+
   return (
     <section id="activities" className="py-20 bg-slate-50 border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14">
+        <div className="text-center max-w-3xl mx-auto mb-10">
           <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-red-100 border border-red-200 text-blood-700 text-xs font-bold mb-3">
             <FaHeart className="text-blood-600" />
             <span>মানবসেবা ও সমাজকল্যাণ</span>
@@ -64,9 +88,28 @@ export function ActivitiesSection() {
           </p>
         </div>
 
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
+          {categories.map((cat) => (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => setSelectedCategory(cat.value)}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                selectedCategory === cat.value
+                  ? "bg-blood-600 text-white shadow-md shadow-blood-600/30 scale-105"
+                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
         {/* 11 Activities Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {HUMANITARIAN_ACTIVITIES.map((act, idx) => {
+          {filteredActivities.map((act) => {
+            const idx = act.id - 1;
             const gradient = bgColors[idx % bgColors.length];
 
             return (
@@ -75,7 +118,7 @@ export function ActivitiesSection() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.4, delay: idx * 0.05 }}
+                transition={{ duration: 0.4, delay: (act.id % 4) * 0.05 }}
                 whileHover={{ y: -6, transition: { duration: 0.2 } }}
                 className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
               >
@@ -102,7 +145,10 @@ export function ActivitiesSection() {
 
                 <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 group-hover:text-blood-600 font-semibold transition-colors">
                   <span>কার্যক্রম #{act.id}</span>
-                  <span>স্বেচ্ছাসেবী সেবা</span>
+                  <span className="flex items-center space-x-1">
+                    <FaShieldHeart className="text-blood-500 text-xs" />
+                    <span>স্বেচ্ছাসেবী সেবা</span>
+                  </span>
                 </div>
               </motion.div>
             );

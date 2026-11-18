@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { updateRequest, deleteRequest } from '@/lib/store';
+import { modifyRequest, removeRequest } from '@/lib/store';
+
+export const dynamic = 'force-dynamic';
 
 export async function PUT(
   request: Request,
@@ -8,7 +10,7 @@ export async function PUT(
   try {
     const { id } = params;
     const body = await request.json();
-    const updated = updateRequest(id, body);
+    const updated = await modifyRequest(id, body);
 
     if (!updated) {
       return NextResponse.json(
@@ -32,7 +34,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
-    const deleted = deleteRequest(id);
+    const deleted = await removeRequest(id);
 
     if (!deleted) {
       return NextResponse.json(

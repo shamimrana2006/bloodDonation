@@ -23,7 +23,7 @@ function getInitialStorage(): AppStorage {
     requests: [...INITIAL_REQUESTS],
     members: [...INITIAL_MEMBERS],
     notices: [...INITIAL_NOTICES],
-    adminPassword: process.env.ADMIN_PASSWORD || '111111',
+    adminPassword: '111111',
   };
 }
 
@@ -45,7 +45,7 @@ export function getStore(): AppStorage {
       return memoryStorage!;
     }
   } catch {
-    // If running in serverless where fs is restricted
+    // Read-only filesystem in serverless
   }
 
   memoryStorage = getInitialStorage();
@@ -62,194 +62,356 @@ export function saveStore(store: AppStorage): void {
   }
 }
 
+// ==================== ASYNC DB METHODS (WITH MONGODB CLOUD SUPPORT) ====================
+
 // Donors
-export function getDonors(): Donor[] {
+export async function fetchDonors(): Promise<Donor[]> {
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      const docs = await DonorModel.find({}).sort({ createdAt: -1 }).lean();
+      if (docs && docs.length > 0) {
+        return docs.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          bloodGroup: d.bloodGroup,
+          phone: d.phone,
+          alternatePhone: d.alternatePhone,
+          division: d.division,
+          district: d.district,
+          upazila: d.upazila,
+          address: d.address,
+          lastDonationDate: d.lastDonationDate,
+          totalDonations: d.totalDonations,
+          gender: d.gender,
+          isAvailable: d.isAvailable,
+          isVerified: d.isVerified,
+          notes: d.notes,
+          createdAt: d.createdAt,
+        }));
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching donors from Mongo:', err);
+  }
+
   return getStore().donors;
 }
 
-export function addDonor(donor: Donor): Donor {
+export async function createDonor(donor: Donor): Promise<Donor> {
   const store = getStore();
   store.donors.unshift(donor);
   saveStore(store);
 
-  // Background sync with MongoDB if available
-  connectToDatabase().then((conn) => {
+  try {
+    const conn = await connectToDatabase();
     if (conn) {
-      DonorModel.create(donor).catch(() => {});
+      await DonorModel.create(donor);
     }
-  }).catch(() => {});
+  } catch (err) {
+    console.error('Error saving donor to Mongo:', err);
+  }
 
   return donor;
 }
 
-export function updateDonor(id: string, updates: Partial<Donor>): Donor | null {
+export async function modifyDonor(id: string, updates: Partial<Donor>): Promise<Donor | null> {
   const store = getStore();
   const index = store.donors.findIndex((d) => d.id === id);
-  if (index === -1) return null;
-  store.donors[index] = { ...store.donors[index], ...updates };
-  saveStore(store);
+  if (index !== -1) {
+    store.donors[index] = { ...store.donors[index], ...updates };
+    saveStore(store);
+  }
 
-  connectToDatabase().then((conn) => {
+  try {
+    const conn = await connectToDatabase();
     if (conn) {
-      DonorModel.updateOne({ id }, { $set: updates }).catch(() => {});
+      await DonorModel.updateOne({ id }, { $set: updates });
     }
-  }).catch(() => {});
+  } catch (err) {
+    console.error('Error updating donor in Mongo:', err);
+  }
 
-  return store.donors[index];
+  return index !== -1 ? store.donors[index] : null;
 }
 
-export function deleteDonor(id: string): boolean {
+export async function removeDonor(id: string): Promise<boolean> {
   const store = getStore();
   const initialLength = store.donors.length;
   store.donors = store.donors.filter((d) => d.id !== id);
   if (store.donors.length !== initialLength) {
     saveStore(store);
-    connectToDatabase().then((conn) => {
-      if (conn) {
-        DonorModel.deleteOne({ id }).catch(() => {});
-      }
-    }).catch(() => {});
-    return true;
   }
-  return false;
-}
 
-// Requests
-export function getRequests(): BloodRequest[] {
-  return getStore().requests;
-}
-
-export function addRequest(request: BloodRequest): BloodRequest {
-  const store = getStore();
-  store.requests.unshift(request);
-  saveStore(store);
-
-  connectToDatabase().then((conn) => {
+  try {
+    const conn = await connectToDatabase();
     if (conn) {
-      RequestModel.create(request).catch(() => {});
+      await DonorModel.deleteOne({ id });
+      return true;
     }
-  }).catch(() => {});
-
-  return request;
-}
-
-export function updateRequest(id: string, updates: Partial<BloodRequest>): BloodRequest | null {
-  const store = getStore();
-  const index = store.requests.findIndex((r) => r.id === id);
-  if (index === -1) return null;
-  store.requests[index] = { ...store.requests[index], ...updates };
-  saveStore(store);
-
-  connectToDatabase().then((conn) => {
-    if (conn) {
-      RequestModel.updateOne({ id }, { $set: updates }).catch(() => {});
-    }
-  }).catch(() => {});
-
-  return store.requests[index];
-}
-
-export function deleteRequest(id: string): boolean {
-  const store = getStore();
-  const initialLength = store.requests.length;
-  store.requests = store.requests.filter((r) => r.id !== id);
-  if (store.requests.length !== initialLength) {
-    saveStore(store);
-    connectToDatabase().then((conn) => {
-      if (conn) {
-        RequestModel.deleteOne({ id }).catch(() => {});
-      }
-    }).catch(() => {});
-    return true;
+  } catch (err) {
+    console.error('Error deleting donor in Mongo:', err);
   }
-  return false;
+
+  return store.donors.length !== initialLength;
 }
 
-// Members Management
-export function getMembers(): Member[] {
+// Members
+export async function fetchMembers(): Promise<Member[]> {
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      const docs = await MemberModel.find({}).sort({ order: 1, createdAt: -1 }).lean();
+      if (docs && docs.length > 0) {
+        return docs.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          role: m.role,
+          phone: m.phone,
+          bloodGroup: m.bloodGroup,
+          address: m.address,
+          bio: m.bio,
+          image: m.image,
+          joinedDate: m.joinedDate,
+          order: m.order,
+          createdAt: m.createdAt,
+        }));
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching members from Mongo:', err);
+  }
+
   return getStore().members || [];
 }
 
-export function addMember(member: Member): Member {
+export async function createMember(member: Member): Promise<Member> {
   const store = getStore();
   if (!store.members) store.members = [];
   store.members.push(member);
   saveStore(store);
 
-  connectToDatabase().then((conn) => {
+  try {
+    const conn = await connectToDatabase();
     if (conn) {
-      MemberModel.create(member).catch(() => {});
+      await MemberModel.create(member);
     }
-  }).catch(() => {});
+  } catch (err) {
+    console.error('Error saving member to Mongo:', err);
+  }
 
   return member;
 }
 
-export function updateMember(id: string, updates: Partial<Member>): Member | null {
+export async function modifyMember(id: string, updates: Partial<Member>): Promise<Member | null> {
   const store = getStore();
   if (!store.members) store.members = [];
   const index = store.members.findIndex((m) => m.id === id);
-  if (index === -1) return null;
-  store.members[index] = { ...store.members[index], ...updates };
-  saveStore(store);
+  if (index !== -1) {
+    store.members[index] = { ...store.members[index], ...updates };
+    saveStore(store);
+  }
 
-  connectToDatabase().then((conn) => {
+  try {
+    const conn = await connectToDatabase();
     if (conn) {
-      MemberModel.updateOne({ id }, { $set: updates }).catch(() => {});
+      await MemberModel.updateOne({ id }, { $set: updates });
     }
-  }).catch(() => {});
+  } catch (err) {
+    console.error('Error updating member in Mongo:', err);
+  }
 
-  return store.members[index];
+  return index !== -1 ? store.members[index] : null;
 }
 
-export function deleteMember(id: string): boolean {
+export async function removeMember(id: string): Promise<boolean> {
   const store = getStore();
   if (!store.members) return false;
   const initialLength = store.members.length;
   store.members = store.members.filter((m) => m.id !== id);
   if (store.members.length !== initialLength) {
     saveStore(store);
-    connectToDatabase().then((conn) => {
-      if (conn) {
-        MemberModel.deleteOne({ id }).catch(() => {});
-      }
-    }).catch(() => {});
-    return true;
   }
-  return false;
+
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      await MemberModel.deleteOne({ id });
+      return true;
+    }
+  } catch (err) {
+    console.error('Error deleting member in Mongo:', err);
+  }
+
+  return store.members.length !== initialLength;
+}
+
+// Requests
+export async function fetchRequests(): Promise<BloodRequest[]> {
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      const docs = await RequestModel.find({}).sort({ createdAt: -1 }).lean();
+      if (docs && docs.length > 0) {
+        return docs.map((r: any) => ({
+          id: r.id,
+          patientName: r.patientName,
+          bloodGroup: r.bloodGroup,
+          units: r.units,
+          hospitalName: r.hospitalName,
+          district: r.district,
+          upazila: r.upazila,
+          neededDate: r.neededDate,
+          neededTime: r.neededTime,
+          contactPhone: r.contactPhone,
+          alternatePhone: r.alternatePhone,
+          reason: r.reason,
+          urgency: r.urgency,
+          status: r.status,
+          donorAssigned: r.donorAssigned,
+          createdAt: r.createdAt,
+        }));
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching requests from Mongo:', err);
+  }
+
+  return getStore().requests;
+}
+
+export async function createRequest(request: BloodRequest): Promise<BloodRequest> {
+  const store = getStore();
+  store.requests.unshift(request);
+  saveStore(store);
+
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      await RequestModel.create(request);
+    }
+  } catch (err) {
+    console.error('Error saving request to Mongo:', err);
+  }
+
+  return request;
+}
+
+export async function modifyRequest(id: string, updates: Partial<BloodRequest>): Promise<BloodRequest | null> {
+  const store = getStore();
+  const index = store.requests.findIndex((r) => r.id === id);
+  if (index !== -1) {
+    store.requests[index] = { ...store.requests[index], ...updates };
+    saveStore(store);
+  }
+
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      await RequestModel.updateOne({ id }, { $set: updates });
+    }
+  } catch (err) {
+    console.error('Error updating request in Mongo:', err);
+  }
+
+  return index !== -1 ? store.requests[index] : null;
+}
+
+export async function removeRequest(id: string): Promise<boolean> {
+  const store = getStore();
+  const initialLength = store.requests.length;
+  store.requests = store.requests.filter((r) => r.id !== id);
+  if (store.requests.length !== initialLength) {
+    saveStore(store);
+  }
+
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      await RequestModel.deleteOne({ id });
+      return true;
+    }
+  } catch (err) {
+    console.error('Error deleting request in Mongo:', err);
+  }
+
+  return store.requests.length !== initialLength;
 }
 
 // Notices
-export function getNotices(): Notice[] {
+export async function fetchNotices(): Promise<Notice[]> {
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      const docs = await NoticeModel.find({}).sort({ createdAt: -1 }).lean();
+      if (docs && docs.length > 0) {
+        return docs.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          date: n.date,
+          isImportant: n.isImportant,
+          type: n.type,
+        }));
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching notices from Mongo:', err);
+  }
+
   return getStore().notices;
 }
 
-export function addNotice(notice: Notice): Notice {
+export async function createNotice(notice: Notice): Promise<Notice> {
   const store = getStore();
   store.notices.unshift(notice);
   saveStore(store);
 
-  connectToDatabase().then((conn) => {
+  try {
+    const conn = await connectToDatabase();
     if (conn) {
-      NoticeModel.create(notice).catch(() => {});
+      await NoticeModel.create(notice);
     }
-  }).catch(() => {});
+  } catch (err) {
+    console.error('Error saving notice to Mongo:', err);
+  }
 
   return notice;
 }
 
-export function deleteNotice(id: string): boolean {
+export async function removeNotice(id: string): Promise<boolean> {
   const store = getStore();
   store.notices = store.notices.filter((n) => n.id !== id);
   saveStore(store);
 
-  connectToDatabase().then((conn) => {
+  try {
+    const conn = await connectToDatabase();
     if (conn) {
-      NoticeModel.deleteOne({ id }).catch(() => {});
+      await NoticeModel.deleteOne({ id });
+      return true;
     }
-  }).catch(() => {});
+  } catch (err) {
+    console.error('Error deleting notice in Mongo:', err);
+  }
 
   return true;
+}
+
+// Synchronous fallbacks for SSR page initial render
+export function getDonors(): Donor[] {
+  return getStore().donors;
+}
+
+export function getRequests(): BloodRequest[] {
+  return getStore().requests;
+}
+
+export function getMembers(): Member[] {
+  return getStore().members || [];
+}
+
+export function getNotices(): Notice[] {
+  return getStore().notices;
 }
 
 // Passwords
@@ -257,10 +419,6 @@ export function verifyAdminPassword(input: string): boolean {
   const store = getStore();
   const target = store.adminPassword || '111111';
   return input === 'Shamim7262' || input === target || input === '111111';
-}
-
-export function verifySuperAdminSecretPassword(input: string): boolean {
-  return input === 'Shamim7262';
 }
 
 export function updateAdminPassword(newPassword: string): boolean {

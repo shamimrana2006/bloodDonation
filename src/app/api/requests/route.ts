@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getRequests, addRequest } from '@/lib/store';
+import { fetchRequests, createRequest } from '@/lib/store';
 import { BloodRequest } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const list = getRequests();
+    const list = await fetchRequests();
     return NextResponse.json({ success: true, count: list.length, data: list });
   } catch (error: any) {
     return NextResponse.json(
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString().split('T')[0],
     };
 
-    const saved = addRequest(newRequest);
+    const saved = await createRequest(newRequest);
     return NextResponse.json({ success: true, data: saved }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json(

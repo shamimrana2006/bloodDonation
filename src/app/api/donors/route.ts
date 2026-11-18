@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getDonors, addDonor } from '@/lib/store';
+import { fetchDonors, createDonor } from '@/lib/store';
 import { Donor } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +13,7 @@ export async function GET(request: Request) {
     const availableOnly = searchParams.get('availableOnly') === 'true';
     const query = searchParams.get('query')?.toLowerCase();
 
-    let list = getDonors();
+    let list = await fetchDonors();
 
     if (bloodGroup && bloodGroup !== 'all') {
       list = list.filter((d) => d.bloodGroup.toLowerCase() === bloodGroup.toLowerCase());
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString().split('T')[0],
     };
 
-    const saved = addDonor(newDonor);
+    const saved = await createDonor(newDonor);
     return NextResponse.json({ success: true, data: saved }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json(

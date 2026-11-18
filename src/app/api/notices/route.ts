@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getNotices, addNotice, deleteNotice } from '@/lib/store';
+import { fetchNotices, createNotice, removeNotice } from '@/lib/store';
 import { Notice } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const list = getNotices();
+    const list = await fetchNotices();
     return NextResponse.json({ success: true, count: list.length, data: list });
   } catch (error: any) {
     return NextResponse.json(
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
       type: body.type || 'সাধারণ',
     };
 
-    const saved = addNotice(newNotice);
+    const saved = await createNotice(newNotice);
     return NextResponse.json({ success: true, data: saved }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json(
@@ -50,7 +52,7 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ success: false, message: 'ID required' }, { status: 400 });
     }
-    deleteNotice(id);
+    await removeNotice(id);
     return NextResponse.json({ success: true, message: 'নোটিশ মুছে ফেলা হয়েছে' });
   } catch (error: any) {
     return NextResponse.json(

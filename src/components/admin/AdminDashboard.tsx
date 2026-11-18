@@ -126,24 +126,81 @@ export function AdminDashboard({
 
       if (dRes.ok) {
         const dJson = await dRes.json();
-        setDonors(dJson.data);
+        if (dJson.data && dJson.data.length > 0) {
+          setDonors(dJson.data);
+          try {
+            localStorage.setItem("bdab_local_donors", JSON.stringify(dJson.data));
+          } catch {}
+        }
       }
       if (rRes.ok) {
         const rJson = await rRes.json();
-        setRequests(rJson.data);
+        if (rJson.data && rJson.data.length > 0) {
+          setRequests(rJson.data);
+          try {
+            localStorage.setItem("bdab_local_requests", JSON.stringify(rJson.data));
+          } catch {}
+        }
       }
       if (mRes.ok) {
         const mJson = await mRes.json();
-        setMembers(mJson.data);
+        if (mJson.data && mJson.data.length > 0) {
+          setMembers(mJson.data);
+          try {
+            localStorage.setItem("bdab_local_members", JSON.stringify(mJson.data));
+          } catch {}
+        }
       }
       if (nRes.ok) {
         const nJson = await nRes.json();
-        setNotices(nJson.data);
+        if (nJson.data && nJson.data.length > 0) {
+          setNotices(nJson.data);
+        }
       }
     } catch {
-      // Local fallback
+      // Local storage fallback
+      try {
+        const ld = localStorage.getItem("bdab_local_donors");
+        if (ld) setDonors(JSON.parse(ld));
+        const lr = localStorage.getItem("bdab_local_requests");
+        if (lr) setRequests(JSON.parse(lr));
+        const lm = localStorage.getItem("bdab_local_members");
+        if (lm) setMembers(JSON.parse(lm));
+      } catch {}
     }
   };
+
+  // Check local storage on mount
+  useEffect(() => {
+    try {
+      const ld = localStorage.getItem("bdab_local_donors");
+      if (ld) setDonors(JSON.parse(ld));
+      const lr = localStorage.getItem("bdab_local_requests");
+      if (lr) setRequests(JSON.parse(lr));
+      const lm = localStorage.getItem("bdab_local_members");
+      if (lm) setMembers(JSON.parse(lm));
+    } catch {}
+    refreshData();
+  }, []);
+
+  // Auto-sync state changes to localStorage
+  useEffect(() => {
+    if (donors && donors.length > 0) {
+      try { localStorage.setItem("bdab_local_donors", JSON.stringify(donors)); } catch {}
+    }
+  }, [donors]);
+
+  useEffect(() => {
+    if (members && members.length > 0) {
+      try { localStorage.setItem("bdab_local_members", JSON.stringify(members)); } catch {}
+    }
+  }, [members]);
+
+  useEffect(() => {
+    if (requests && requests.length > 0) {
+      try { localStorage.setItem("bdab_local_requests", JSON.stringify(requests)); } catch {}
+    }
+  }, [requests]);
 
   // Login handler
   const handleLogin = async (e: React.FormEvent) => {

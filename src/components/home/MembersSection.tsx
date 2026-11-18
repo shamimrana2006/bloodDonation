@@ -106,8 +106,8 @@ export function MembersSection({ members }: MembersSectionProps) {
 
         {/* Filter and Search Box */}
         <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 shadow-xs mb-10 space-y-5">
-          {/* Committee Level Tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          {/* Committee Level Tabs (Smooth horizontal scroll on mobile) */}
+          <div className="flex overflow-x-auto sm:flex-wrap items-center sm:justify-center gap-2 pb-2 sm:pb-0 scrollbar-none">
             {committeeTabs.map((tab) => {
               const isSelected = activeCommitteeTab === tab.value;
 
@@ -116,7 +116,7 @@ export function MembersSection({ members }: MembersSectionProps) {
                   key={tab.value}
                   type="button"
                   onClick={() => setActiveCommitteeTab(tab.value)}
-                  className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex-shrink-0 ${
                     isSelected
                       ? "bg-blood-600 text-white shadow-md shadow-blood-600/30 scale-105"
                       : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
@@ -138,7 +138,7 @@ export function MembersSection({ members }: MembersSectionProps) {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="রেজিস্ট্রেশন নং (যেমন: BDAB-C-001) বা ফোন বা নাম লিখুন..."
+                  placeholder="রেজিস্ট্রেশন নং (যেমন: BDAB-001) বা ফোন বা নাম লিখুন..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blood-500 font-medium"
@@ -242,12 +242,13 @@ export function MembersSection({ members }: MembersSectionProps) {
                       <div className="relative">
                         <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-blood-600 shadow-md bg-white p-0.5 flex items-center justify-center">
                           {member.image ? (
-                            <Image
+                            <img
                               src={member.image}
                               alt={member.name}
-                              width={80}
-                              height={80}
                               className="object-cover w-full h-full rounded-xl"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = "none";
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full rounded-xl bg-gradient-to-br from-blood-600 to-rose-600 text-white flex items-center justify-center text-2xl font-black">
@@ -332,7 +333,7 @@ export function MembersSection({ members }: MembersSectionProps) {
                     <div className="grid grid-cols-2 gap-2">
                       <a
                         href={`tel:${member.phone}`}
-                        className="inline-flex items-center justify-center space-x-1 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs py-2 px-2.5 rounded-xl transition-all shadow-xs"
+                        className="inline-flex items-center justify-center space-x-1 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs py-2 px-2 rounded-xl transition-all shadow-xs whitespace-nowrap"
                       >
                         <FaPhone className="text-[10px]" />
                         <span>কল দিন</span>
@@ -342,7 +343,7 @@ export function MembersSection({ members }: MembersSectionProps) {
                         href={`https://wa.me/88${member.phone}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center space-x-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-2.5 rounded-xl transition-all shadow-xs"
+                        className="inline-flex items-center justify-center space-x-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-2 rounded-xl transition-all shadow-xs whitespace-nowrap"
                       >
                         <FaWhatsapp className="text-sm" />
                         <span>হোয়াটসঅ্যাপ</span>
@@ -355,18 +356,18 @@ export function MembersSection({ members }: MembersSectionProps) {
                         type="button"
                         onClick={() => setViewingIdCardMember(member)}
                         variant="outline"
-                        className="text-xs font-bold border-blood-200 text-blood-700 hover:bg-blood-50 h-8 rounded-xl px-2"
+                        className="text-xs font-bold border-blood-200 text-blood-700 hover:bg-blood-50 h-8 rounded-xl px-1.5 whitespace-nowrap"
                       >
-                        <FaIdCard className="mr-1 text-blood-600 text-xs" />
-                        <span>আইডি কার্ড</span>
+                        <FaIdCard className="mr-1 text-blood-600 text-xs flex-shrink-0" />
+                        <span className="truncate">আইডি কার্ড</span>
                       </Button>
 
                       <Link
                         href={`/member/${member.registrationNumber || member.id}`}
-                        className="inline-flex items-center justify-center text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white h-8 rounded-xl px-2 transition-colors"
+                        className="inline-flex items-center justify-center text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white h-8 rounded-xl px-1.5 transition-colors whitespace-nowrap"
                       >
-                        <FaArrowUpRightFromSquare className="mr-1 text-[10px]" />
-                        <span>প্রোফাইল পেজ</span>
+                        <FaArrowUpRightFromSquare className="mr-1 text-[10px] flex-shrink-0" />
+                        <span className="truncate">প্রোফাইল পেজ</span>
                       </Link>
                     </div>
                   </div>

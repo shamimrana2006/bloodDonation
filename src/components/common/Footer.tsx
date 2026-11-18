@@ -57,9 +57,9 @@ export function Footer() {
                 href={ORG_INFO.facebookGroup}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-xl font-medium transition-colors shadow-sm"
+                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm whitespace-nowrap"
               >
-                <FaFacebook className="text-base" />
+                <FaFacebook className="text-base flex-shrink-0" />
                 <span>অফিসিয়াল ফেসবুক গ্রুপে যোগ দিন</span>
               </a>
             </div>

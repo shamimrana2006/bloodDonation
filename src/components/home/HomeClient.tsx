@@ -39,14 +39,30 @@ export function HomeClient({
 
   // Sync with API & localStorage backup on mount
   useEffect(() => {
-    // 1. Fetch live data from server/database
-    fetch("/api/donors")
+    // 1. Immediately check localStorage for images uploaded by admin and merge them
+    try {
+      const localStr = localStorage.getItem("bdab_local_members");
+      if (localStr) {
+        const localList: Member[] = JSON.parse(localStr);
+        setMembers((prev) =>
+          prev.map((m) => {
+            const match = localList.find((l) => l.id === m.id || l.registrationNumber === m.registrationNumber);
+            if (match && match.image && !m.image) {
+              return { ...m, image: match.image };
+            }
+            return m;
+          })
+        );
+      }
+    } catch {}
+
+    // 2. Fetch live data from server/database
+    fetch(`/api/donors?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data && res.data.length > 0) {
           setDonors(res.data);
         } else {
-          // Fallback to local storage if API has fewer
           try {
             const local = localStorage.getItem("bdab_local_donors");
             if (local) setDonors(JSON.parse(local));
@@ -60,7 +76,7 @@ export function HomeClient({
         } catch {}
       });
 
-    fetch("/api/requests")
+    fetch(`/api/requests?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data && res.data.length > 0) {
@@ -74,16 +90,29 @@ export function HomeClient({
       })
       .catch(() => {});
 
-    fetch("/api/members")
+    // Fetch members with fresh timestamp to bypass browser cache
+    fetch(`/api/members?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data && res.data.length > 0) {
-          setMembers(res.data);
-        } else {
-          try {
-            const local = localStorage.getItem("bdab_local_members");
-            if (local) setMembers(JSON.parse(local));
-          } catch {}
+          setMembers((prev) => {
+            const apiData: Member[] = res.data;
+            try {
+              const localStr = localStorage.getItem("bdab_local_members");
+              const localList: Member[] = localStr ? JSON.parse(localStr) : [];
+              return apiData.map((m) => {
+                if (!m.image) {
+                  const match = localList.find((l) => l.id === m.id || l.registrationNumber === m.registrationNumber);
+                  if (match && match.image) return { ...m, image: match.image };
+                  const prevM = prev.find((p) => p.id === m.id || p.registrationNumber === m.registrationNumber);
+                  if (prevM && prevM.image) return { ...m, image: prevM.image };
+                }
+                return m;
+              });
+            } catch {
+              return apiData;
+            }
+          });
         }
       })
       .catch(() => {});
@@ -98,7 +127,11 @@ export function HomeClient({
 
   useEffect(() => {
     if (members && members.length > 0) {
-      try { localStorage.setItem("bdab_local_members", JSON.stringify(members)); } catch {}
+      // Only sync if at least one member has an image or custom data, never overwrite with empty
+      const hasImages = members.some((m) => !!m.image);
+      if (hasImages) {
+        try { localStorage.setItem("bdab_local_members", JSON.stringify(members)); } catch {}
+      }
     }
   }, [members]);
 

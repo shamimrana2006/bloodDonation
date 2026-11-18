@@ -73,8 +73,8 @@ export function BloodCompatibilityChart() {
           </p>
         </div>
 
-        {/* Interactive Group Selector Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5 mb-10">
+        {/* Interactive Group Selector Pills (Responsive horizontal swipe on mobile) */}
+        <div className="flex overflow-x-auto sm:flex-wrap items-center sm:justify-center gap-2 sm:gap-2.5 pb-2 sm:pb-0 scrollbar-none mb-10">
           {GROUPS.map((g) => {
             const isSelected = selectedGroup === g;
 
@@ -83,7 +83,7 @@ export function BloodCompatibilityChart() {
                 key={g}
                 type="button"
                 onClick={() => setSelectedGroup(g)}
-                className={`px-5 py-2.5 rounded-2xl font-black text-base transition-all duration-200 flex items-center space-x-2 ${
+                className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-2xl font-black text-sm sm:text-base transition-all duration-200 flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap flex-shrink-0 ${
                   isSelected
                     ? "bg-blood-600 text-white shadow-lg shadow-blood-600/30 scale-105"
                     : "bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-blood-700 border border-slate-200"

@@ -259,11 +259,9 @@ export function MemberProfileClient({
               <div className="relative flex-shrink-0">
                 <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-4 border-white shadow-2xl bg-white flex items-center justify-center">
                   {member.image ? (
-                    <Image
+                    <img
                       src={member.image}
                       alt={member.name}
-                      width={128}
-                      height={128}
                       className="object-cover w-full h-full"
                     />
                   ) : (
@@ -336,34 +334,34 @@ export function MemberProfileClient({
           </div>
 
           {/* Quick Actions Row: Call, WhatsApp, Download QR */}
-          <div className="bg-slate-100/80 p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="bg-slate-100/80 p-3 sm:p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
               <a
                 href={`tel:${member.phone}`}
-                className="inline-flex items-center space-x-2 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs sm:text-sm py-2 px-4 rounded-xl transition-all shadow-xs"
+                className="inline-flex items-center justify-center space-x-1.5 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs sm:text-sm py-2.5 px-3 rounded-xl transition-all shadow-xs whitespace-nowrap"
               >
-                <FaPhone className="text-xs" />
-                <span>সরাসরি কল করুন</span>
+                <FaPhone className="text-xs flex-shrink-0" />
+                <span>কল করুন</span>
               </a>
 
               <a
                 href={`https://wa.me/88${member.phone}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-2 px-4 rounded-xl transition-all shadow-xs"
+                className="inline-flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-2.5 px-3 rounded-xl transition-all shadow-xs whitespace-nowrap"
               >
-                <FaWhatsapp className="text-sm" />
-                <span>হোয়াটসঅ্যাপ মেসেজ</span>
+                <FaWhatsapp className="text-base flex-shrink-0" />
+                <span>হোয়াটসঅ্যাপ</span>
               </a>
             </div>
 
             <Button
               onClick={handleDownloadQR}
               disabled={isDownloading}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm py-2 px-4 rounded-xl shadow-xs"
+              className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow-xs whitespace-nowrap justify-center"
             >
-              <FaDownload className="mr-1.5 text-xs text-blood-400" />
-              <span>{isDownloading ? "ডাউনলোড হচ্ছে..." : "কিউআর কোড ডাউনলোড (PNG)"}</span>
+              <FaDownload className="mr-1.5 text-xs text-blood-400 flex-shrink-0" />
+              <span>{isDownloading ? "ডাউনলোড হচ্ছে..." : "QR কোড ডাউনলোড (PNG)"}</span>
             </Button>
           </div>
 

@@ -1,13 +1,15 @@
-import { getDonors, getRequests, getNotices, getMembers } from '@/lib/store';
+import { fetchDonors, fetchRequests, fetchNotices, fetchMembers } from '@/lib/store';
 import { HomeClient } from '@/components/home/HomeClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function HomePage() {
-  const donors = getDonors();
-  const requests = getRequests();
-  const notices = getNotices();
-  const members = getMembers();
+export default async function HomePage() {
+  const [donors, requests, notices, members] = await Promise.all([
+    fetchDonors(),
+    fetchRequests(),
+    fetchNotices(),
+    fetchMembers(),
+  ]);
 
   return (
     <main className="min-h-screen">

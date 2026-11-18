@@ -51,12 +51,12 @@ export function BloodRequestFeed({
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <div className="bg-slate-100 p-1 rounded-xl flex items-center text-xs font-bold">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full md:w-auto">
+            <div className="bg-slate-100 p-1 rounded-xl flex items-center text-xs font-bold overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setFilter("active")}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
                   filter === "active"
                     ? "bg-white text-blood-700 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -67,7 +67,7 @@ export function BloodRequestFeed({
               <button
                 type="button"
                 onClick={() => setFilter("all")}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
                   filter === "all"
                     ? "bg-white text-blood-700 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -79,10 +79,10 @@ export function BloodRequestFeed({
 
             <Button
               onClick={onOpenRequestModal}
-              className="bg-blood-600 hover:bg-blood-700 text-white font-bold text-sm shadow-md shadow-blood-600/20"
+              className="w-full sm:w-auto bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blood-600/20 whitespace-nowrap"
             >
-              <FaPlus className="mr-1.5" />
-              রক্তের আবেদন করুন
+              <FaPlus className="mr-1.5 flex-shrink-0" />
+              <span>রক্তের আবেদন করুন</span>
             </Button>
           </div>
         </div>
@@ -197,9 +197,9 @@ export function BloodRequestFeed({
                     <div className="grid grid-cols-2 gap-2">
                       <a
                         href={`tel:${req.contactPhone}`}
-                        className="inline-flex items-center justify-center space-x-1.5 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-all shadow-md shadow-blood-600/20"
+                        className="inline-flex items-center justify-center space-x-1.5 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs py-2.5 px-2 rounded-xl transition-all shadow-md shadow-blood-600/20 whitespace-nowrap"
                       >
-                        <FaPhoneVolume className="text-xs" />
+                        <FaPhoneVolume className="text-xs flex-shrink-0" />
                         <span>কল দিন</span>
                       </a>
 
@@ -207,9 +207,9 @@ export function BloodRequestFeed({
                         href={`https://wa.me/88${req.contactPhone}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-all shadow-md shadow-emerald-600/20"
+                        className="inline-flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-2 rounded-xl transition-all shadow-md shadow-emerald-600/20 whitespace-nowrap"
                       >
-                        <FaWhatsapp className="text-sm" />
+                        <FaWhatsapp className="text-sm flex-shrink-0" />
                         <span>হোয়াটসঅ্যাপ</span>
                       </a>
                     </div>

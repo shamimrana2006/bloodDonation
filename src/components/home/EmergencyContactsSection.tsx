@@ -80,9 +80,9 @@ export function EmergencyContactsSection() {
                 <div className="grid grid-cols-2 gap-2">
                   <a
                     href={`tel:${leader.phone}`}
-                    className="inline-flex items-center justify-center space-x-1.5 bg-blood-600 hover:bg-blood-700 text-white font-bold text-sm py-2.5 px-3 rounded-xl transition-all shadow-md shadow-blood-600/20"
+                    className="inline-flex items-center justify-center space-x-1.5 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs sm:text-sm py-2.5 px-3 rounded-xl transition-all shadow-md shadow-blood-600/20 whitespace-nowrap"
                   >
-                    <FaPhone className="text-xs" />
+                    <FaPhone className="text-xs flex-shrink-0" />
                     <span>কল দিন</span>
                   </a>
 
@@ -91,9 +91,9 @@ export function EmergencyContactsSection() {
                       href={`https://wa.me/88${leader.whatsapp}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-2.5 px-3 rounded-xl transition-all shadow-md shadow-emerald-600/20"
+                      className="inline-flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-2.5 px-3 rounded-xl transition-all shadow-md shadow-emerald-600/20 whitespace-nowrap"
                     >
-                      <FaWhatsapp className="text-base" />
+                      <FaWhatsapp className="text-base flex-shrink-0" />
                       <span>হোয়াটসঅ্যাপ</span>
                     </a>
                   )}
@@ -102,17 +102,17 @@ export function EmergencyContactsSection() {
                 <button
                   type="button"
                   onClick={() => handleCopy(leader.phone, leader.id)}
-                  className="w-full inline-flex items-center justify-center space-x-1.5 text-xs text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 py-2 rounded-xl border border-slate-200 transition-colors font-semibold"
+                  className="w-full inline-flex items-center justify-center space-x-1.5 text-xs text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 py-2 rounded-xl border border-slate-200 transition-colors font-semibold whitespace-nowrap"
                 >
                   {copiedId === leader.id ? (
                     <>
-                      <FaCheck className="text-emerald-600" />
+                      <FaCheck className="text-emerald-600 flex-shrink-0" />
                       <span className="text-emerald-700">নম্বর কপি হয়েছে!</span>
                     </>
                   ) : (
                     <>
-                      <FaCopy className="text-slate-400" />
-                      <span>নম্বর কপি: {leader.phone}</span>
+                      <FaCopy className="text-slate-400 flex-shrink-0" />
+                      <span className="truncate">নম্বর কপি: {leader.phone}</span>
                     </>
                   )}
                 </button>

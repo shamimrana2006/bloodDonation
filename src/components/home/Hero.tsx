@@ -76,11 +76,11 @@ export function Hero({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.18]"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.22]"
             >
               <span className="text-blood-600">{ORG_INFO.name}</span>
               <br />
-              <span className="text-slate-800 text-2xl sm:text-3xl md:text-4xl font-bold mt-2 block">
+              <span className="text-slate-800 text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold mt-1.5 sm:mt-2 block">
                 “{ORG_INFO.slogan}”
               </span>
             </motion.h1>
@@ -89,7 +89,7 @@ export function Hero({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-medium"
+              className="text-sm sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-medium"
             >
               জরুরি মুহূর্তে রক্তের প্রয়োজনে অসহায় মানুষের পাশে দাঁড়ানো এবং সমাজের প্রতিটি কোনায় মানবতার আলো ছড়িয়ে দেওয়াই আমাদের ব্রত। এক ব্যাগ রক্তে বেঁচে যেতে পারে একটি অমূল্য প্রাণ।
             </motion.p>
@@ -99,14 +99,14 @@ export function Hero({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.25 }}
-              className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-xs sm:text-sm font-semibold text-slate-700"
+              className="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3 text-xs sm:text-sm font-semibold text-slate-700"
             >
-              <span className="flex items-center space-x-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs">
-                <FaLocationDot className="text-blood-600" />
+              <span className="flex items-center space-x-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs whitespace-nowrap">
+                <FaLocationDot className="text-blood-600 flex-shrink-0" />
                 <span>প্রধান কার্যালয়: সরিষাবাড়ী, জামালপুর</span>
               </span>
-              <span className="flex items-center space-x-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs">
-                <FaCheck className="text-emerald-600" />
+              <span className="flex items-center space-x-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs whitespace-nowrap">
+                <FaCheck className="text-emerald-600 flex-shrink-0" />
                 <span>২৪ ঘণ্টা বিনামূল্যে সেবা</span>
               </span>
             </motion.div>
@@ -116,15 +116,15 @@ export function Hero({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-2"
+              className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2.5 sm:gap-3 pt-2 w-full"
             >
               <a href="#donors" className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto bg-blood-600 hover:bg-blood-700 text-white font-bold text-base shadow-lg shadow-blood-600/30 px-6 py-6 rounded-xl"
+                  className="w-full sm:w-auto bg-blood-600 hover:bg-blood-700 text-white font-bold text-sm sm:text-base shadow-lg shadow-blood-600/30 px-5 sm:px-6 py-5 sm:py-6 rounded-xl whitespace-nowrap"
                 >
-                  <FaMagnifyingGlass className="mr-2 text-lg" />
-                  রক্তদাতা খুঁজুন
+                  <FaMagnifyingGlass className="mr-2 text-base sm:text-lg flex-shrink-0" />
+                  <span>রক্তদাতা খুঁজুন</span>
                 </Button>
               </a>
 
@@ -132,20 +132,20 @@ export function Hero({
                 onClick={onOpenRequestModal}
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-2 border-blood-600 text-blood-700 hover:bg-blood-50 font-bold text-base px-6 py-6 rounded-xl shadow-xs"
+                className="w-full sm:w-auto border-2 border-blood-600 text-blood-700 hover:bg-blood-50 font-bold text-sm sm:text-base px-5 sm:px-6 py-5 sm:py-6 rounded-xl shadow-xs whitespace-nowrap"
               >
-                <FaDroplet className="mr-2 text-blood-600 text-lg" />
-                জরুরি রক্তের আবেদন
+                <FaDroplet className="mr-2 text-blood-600 text-base sm:text-lg flex-shrink-0" />
+                <span>জরুরি রক্তের আবেদন</span>
               </Button>
 
               <Button
                 onClick={onOpenDonorModal}
                 size="lg"
                 variant="secondary"
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base px-6 py-6 rounded-xl shadow-md shadow-emerald-600/20"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm sm:text-base px-5 sm:px-6 py-5 sm:py-6 rounded-xl shadow-md shadow-emerald-600/20 whitespace-nowrap"
               >
-                <FaUserPlus className="mr-2 text-lg" />
-                রক্তদাতা হোন
+                <FaUserPlus className="mr-2 text-base sm:text-lg flex-shrink-0" />
+                <span>রক্তদাতা হোন</span>
               </Button>
             </motion.div>
           </div>

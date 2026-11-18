@@ -106,11 +106,9 @@ export function MemberIdCardModal({
               <div className="relative flex-shrink-0">
                 <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-blood-600 bg-white shadow-md flex items-center justify-center">
                   {member.image ? (
-                    <Image
+                    <img
                       src={member.image}
                       alt={member.name}
-                      width={96}
-                      height={96}
                       className="object-cover w-full h-full"
                     />
                   ) : (
@@ -200,45 +198,43 @@ export function MemberIdCardModal({
             </div>
           </div>
 
-          {/* Action Buttons Row */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+          {/* Action Buttons Row - Responsive 2x2 grid on mobile, flex on desktop */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-between gap-2 pt-2">
             <Link
               href={`/member/${member.registrationNumber || member.id}`}
-              className="inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-blood-300 border border-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+              className="inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-blood-300 border border-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
             >
-              <FaArrowUpRightFromSquare className="mr-1.5 text-[10px]" />
-              পূর্ণ প্রোফাইল পেজ
+              <FaArrowUpRightFromSquare className="mr-1.5 text-[10px] flex-shrink-0" />
+              <span className="truncate">প্রোফাইল পেজ</span>
             </Link>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                onClick={handleDownloadQR}
-                disabled={downloading}
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold h-9 px-3 rounded-xl shadow-xs"
-              >
-                <FaDownload className="mr-1.5 text-[10px]" />
-                {downloading ? "ডাউনলোড হচ্ছে..." : "QR ডাউনলোড"}
-              </Button>
+            <Button
+              onClick={handleDownloadQR}
+              disabled={downloading}
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold h-9 px-3 rounded-xl shadow-xs whitespace-nowrap"
+            >
+              <FaDownload className="mr-1.5 text-[10px] flex-shrink-0" />
+              <span className="truncate">{downloading ? "ডাউনলোড..." : "QR ডাউনলোড"}</span>
+            </Button>
 
-              <Button
-                onClick={handlePrint}
-                variant="outline"
-                size="sm"
-                className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 text-xs font-bold h-9 px-3 rounded-xl"
-              >
-                <FaPrint className="mr-1.5 text-[10px]" />
-                প্রিন্ট আইডি
-              </Button>
+            <Button
+              onClick={handlePrint}
+              variant="outline"
+              size="sm"
+              className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 text-xs font-bold h-9 px-3 rounded-xl whitespace-nowrap"
+            >
+              <FaPrint className="mr-1.5 text-[10px] flex-shrink-0" />
+              <span>প্রিন্ট আইডি</span>
+            </Button>
 
-              <Button
-                onClick={onClose}
-                size="sm"
-                className="bg-blood-600 hover:bg-blood-700 text-white text-xs font-bold h-9 px-3 rounded-xl"
-              >
-                বন্ধ
-              </Button>
-            </div>
+            <Button
+              onClick={onClose}
+              size="sm"
+              className="bg-blood-600 hover:bg-blood-700 text-white text-xs font-bold h-9 px-3 rounded-xl whitespace-nowrap"
+            >
+              <span>বন্ধ</span>
+            </Button>
           </div>
         </div>
       </DialogContent>

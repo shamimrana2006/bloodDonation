@@ -18,35 +18,35 @@ export function EmergencyTicker({ requests, onOpenRequestModal }: EmergencyTicke
 
   return (
     <div className="bg-red-500 text-white border-y border-red-600 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 py-2.5 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
-        <div className="flex items-center space-x-2.5 flex-1 min-w-[280px]">
-          <span className="flex-shrink-0 bg-white text-red-600 px-2.5 py-0.5 rounded-full font-bold text-xs uppercase tracking-wider flex items-center space-x-1 animate-pulse">
+      <div className="max-w-7xl mx-auto px-4 py-2 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 text-xs sm:text-sm">
+        <div className="flex items-center space-x-2 min-w-0 w-full sm:w-auto">
+          <span className="flex-shrink-0 bg-white text-red-600 px-2 py-0.5 rounded-full font-bold text-[10px] sm:text-xs uppercase tracking-wider flex items-center space-x-1 animate-pulse">
             <FaTriangleExclamation />
-            <span>জরুরি রক্ত প্রয়োজন</span>
+            <span>জরুরি রক্ত</span>
           </span>
-          <p className="truncate font-medium">
-            <span className="font-bold underline decoration-white/50 underline-offset-2">
+          <p className="truncate font-medium text-xs sm:text-sm">
+            <span className="font-black underline decoration-white/50">
               [{urgentReq.bloodGroup}]
             </span>{" "}
-            গ্রুপের রক্ত প্রয়োজন: {urgentReq.patientName} - {urgentReq.hospitalName}, {urgentReq.district}
+            প্রয়োজন: {urgentReq.patientName} - {urgentReq.hospitalName}
           </p>
         </div>
 
-        <div className="flex items-center space-x-3 ml-auto flex-shrink-0">
+        <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-end flex-shrink-0">
           <a
             href={`tel:${urgentReq.contactPhone}`}
-            className="inline-flex items-center space-x-1.5 bg-white text-red-600 hover:bg-red-50 font-bold px-3 py-1 rounded-full text-xs shadow-xs transition-colors"
+            className="inline-flex items-center space-x-1.5 bg-white text-red-600 hover:bg-red-50 font-bold px-3 py-1 rounded-full text-xs shadow-xs transition-colors whitespace-nowrap"
           >
             <FaPhone className="text-[10px]" />
-            <span>সরাসরি কল ({urgentReq.contactPhone})</span>
+            <span>কল দিন ({urgentReq.contactPhone})</span>
           </a>
 
           <a
             href="#requests"
-            className="hidden sm:inline-flex items-center space-x-1 hover:text-red-100 font-semibold underline underline-offset-2"
+            className="hidden sm:inline-flex items-center space-x-1 hover:text-red-100 font-semibold underline underline-offset-2 text-xs whitespace-nowrap"
           >
-            <span>সকল আবেদন দেখুন</span>
-            <FaArrowRight className="text-xs" />
+            <span>সকল আবেদন</span>
+            <FaArrowRight className="text-[10px]" />
           </a>
         </div>
       </div>

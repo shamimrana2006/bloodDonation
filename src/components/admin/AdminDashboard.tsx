@@ -718,8 +718,8 @@ export function AdminDashboard({
       {/* Top Admin Navbar */}
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-blood-500 bg-white p-0.5">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-blood-500 bg-white p-0.5 flex-shrink-0">
               <Image
                 src="/logo.png"
                 alt="BDAB"
@@ -728,25 +728,26 @@ export function AdminDashboard({
                 className="object-contain w-full h-full"
               />
             </div>
-            <div>
-              <h1 className="font-extrabold text-sm sm:text-base leading-tight">
+            <div className="min-w-0">
+              <h1 className="font-extrabold text-xs sm:text-base leading-tight truncate">
                 ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ
               </h1>
-              <span className="text-[11px] text-blood-400 font-semibold block">
+              <span className="text-[10px] sm:text-[11px] text-blood-400 font-semibold block truncate">
                 সুপার এডমিন কন্ট্রোল প্যানেল
               </span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             <Link href="/" target="_blank">
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white text-xs"
+                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white text-xs whitespace-nowrap"
               >
-                <FaEye className="mr-1.5" />
-                ওয়েবসাইট দেখুন
+                <FaEye className="sm:mr-1.5" />
+                <span className="hidden sm:inline">ওয়েবসাইট দেখুন</span>
+                <span className="sm:hidden">সাইট</span>
               </Button>
             </Link>
 
@@ -754,10 +755,11 @@ export function AdminDashboard({
               onClick={handleLogout}
               variant="destructive"
               size="sm"
-              className="text-xs font-semibold"
+              className="text-xs font-semibold whitespace-nowrap"
             >
-              <FaRightFromBracket className="mr-1.5" />
-              লগআউট
+              <FaRightFromBracket className="sm:mr-1.5" />
+              <span className="hidden sm:inline">লগআউট</span>
+              <span className="sm:hidden">প্রস্থান</span>
             </Button>
           </div>
         </div>
@@ -766,11 +768,11 @@ export function AdminDashboard({
       {/* Main Admin Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap items-center gap-2 mb-8 bg-white p-2 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex overflow-x-auto items-center gap-2 mb-8 bg-white p-2 rounded-2xl border border-slate-200 shadow-xs scrollbar-none whitespace-nowrap">
           <button
             type="button"
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 flex-shrink-0 whitespace-nowrap ${
               activeTab === "overview"
                 ? "bg-blood-600 text-white shadow-md shadow-blood-600/25"
                 : "text-slate-600 hover:bg-slate-100"
@@ -783,7 +785,7 @@ export function AdminDashboard({
           <button
             type="button"
             onClick={() => setActiveTab("donors")}
-            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 flex-shrink-0 whitespace-nowrap ${
               activeTab === "donors"
                 ? "bg-blood-600 text-white shadow-md shadow-blood-600/25"
                 : "text-slate-600 hover:bg-slate-100"
@@ -796,7 +798,7 @@ export function AdminDashboard({
           <button
             type="button"
             onClick={() => setActiveTab("requests")}
-            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 flex-shrink-0 whitespace-nowrap ${
               activeTab === "requests"
                 ? "bg-blood-600 text-white shadow-md shadow-blood-600/25"
                 : "text-slate-600 hover:bg-slate-100"
@@ -809,7 +811,7 @@ export function AdminDashboard({
           <button
             type="button"
             onClick={() => setActiveTab("members")}
-            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 flex-shrink-0 whitespace-nowrap ${
               activeTab === "members"
                 ? "bg-blood-600 text-white shadow-md shadow-blood-600/25"
                 : "text-slate-600 hover:bg-slate-100"
@@ -822,7 +824,7 @@ export function AdminDashboard({
           <button
             type="button"
             onClick={() => setActiveTab("notices")}
-            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 flex-shrink-0 whitespace-nowrap ${
               activeTab === "notices"
                 ? "bg-blood-600 text-white shadow-md shadow-blood-600/25"
                 : "text-slate-600 hover:bg-slate-100"
@@ -835,7 +837,7 @@ export function AdminDashboard({
           <button
             type="button"
             onClick={() => setActiveTab("settings")}
-            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 flex-shrink-0 whitespace-nowrap ${
               activeTab === "settings"
                 ? "bg-blood-600 text-white shadow-md shadow-blood-600/25"
                 : "text-slate-600 hover:bg-slate-100"

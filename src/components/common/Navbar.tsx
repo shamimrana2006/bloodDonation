@@ -34,11 +34,11 @@ export function Navbar({ onOpenDonorModal, onOpenRequestModal }: NavbarProps) {
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       {/* Top emergency announcement bar */}
-      <div className="bg-gradient-to-r from-blood-800 via-blood-700 to-blood-800 text-white text-xs md:text-sm py-1.5 px-4">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center justify-center p-1 bg-white/20 rounded-full animate-pulse">
-              <FaDroplet className="text-white text-xs" />
+      <div className="bg-gradient-to-r from-blood-800 via-blood-700 to-blood-800 text-white py-1.5 px-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 text-[11px] sm:text-xs md:text-sm">
+            <span className="inline-flex items-center justify-center p-1 bg-white/20 rounded-full animate-pulse flex-shrink-0">
+              <FaDroplet className="text-white text-[10px] sm:text-xs" />
             </span>
             <span className="font-medium tracking-wide">
               মানবতার সেবায়, মানুষের কল্যাণে।
@@ -49,21 +49,21 @@ export function Navbar({ onOpenDonorModal, onOpenRequestModal }: NavbarProps) {
             </span>
           </div>
 
-          <div className="flex items-center space-x-4 ml-auto">
+          <div className="flex items-center space-x-2.5 sm:space-x-4 ml-auto text-[11px] sm:text-xs">
             <a
               href="tel:01846474949"
-              className="flex items-center space-x-1.5 text-white hover:text-blood-100 font-semibold transition-colors"
+              className="flex items-center space-x-1.5 text-white hover:text-blood-100 font-semibold transition-colors whitespace-nowrap"
             >
-              <FaPhoneVolume className="text-xs" />
+              <FaPhoneVolume className="text-[10px] sm:text-xs flex-shrink-0" />
               <span>জরুরি হটলাইন: 01846474949</span>
             </a>
             <a
               href="https://www.facebook.com/groups/bdab64w/?ref=share&mibextid=NSMWBT"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center space-x-1 hover:text-blood-100 transition-colors bg-white/10 px-2 py-0.5 rounded-full text-xs"
+              className="flex items-center space-x-1 hover:text-blood-100 transition-colors bg-white/10 px-2 py-0.5 rounded-full text-[10px] sm:text-xs whitespace-nowrap"
             >
-              <FaFacebook />
+              <FaFacebook className="flex-shrink-0" />
               <span className="hidden md:inline">ফেসবুক গ্রুপ</span>
             </a>
           </div>
@@ -74,8 +74,8 @@ export function Navbar({ onOpenDonorModal, onOpenRequestModal }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo & Brand */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden border-2 border-blood-600 shadow-md bg-white p-0.5 flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
+          <Link href="/" className="flex items-center space-x-2.5 sm:space-x-3 group min-w-0">
+            <div className="relative w-11 h-11 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-blood-600 shadow-md bg-white p-0.5 flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
               <Image
                 src="/logo.png"
                 alt="ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ লোগো"
@@ -85,11 +85,11 @@ export function Navbar({ onOpenDonorModal, onOpenRequestModal }: NavbarProps) {
                 priority
               />
             </div>
-            <div className="flex flex-col">
-              <span className="text-base sm:text-lg md:text-xl font-extrabold text-slate-900 group-hover:text-blood-600 transition-colors tracking-tight leading-tight">
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs sm:text-base md:text-xl font-black text-slate-900 group-hover:text-blood-600 transition-colors tracking-tight leading-tight line-clamp-1 sm:line-clamp-none">
                 ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ
               </span>
-              <span className="text-[11px] sm:text-xs text-blood-600 font-semibold tracking-wide">
+              <span className="text-[10px] sm:text-xs text-blood-600 font-semibold tracking-wide truncate">
                 একটি মানবিক, সামাজিক ও স্বেচ্ছাসেবী সংগঠন
               </span>
             </div>

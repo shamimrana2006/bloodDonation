@@ -111,11 +111,11 @@ export function DonorSearch({ initialDonors, onOpenDonorModal }: DonorSearchProp
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
               রক্তের গ্রুপ বাছাই করুন:
             </label>
-            <div className="flex flex-wrap gap-2 sm:gap-2.5">
+            <div className="flex overflow-x-auto sm:flex-wrap gap-2 sm:gap-2.5 pb-2 sm:pb-0 scrollbar-none">
               <button
                 type="button"
                 onClick={() => setSelectedGroup("all")}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex-shrink-0 ${
                   selectedGroup === "all"
                     ? "bg-blood-600 text-white shadow-md shadow-blood-600/25 scale-105"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -128,7 +128,7 @@ export function DonorSearch({ initialDonors, onOpenDonorModal }: DonorSearchProp
                   key={group}
                   type="button"
                   onClick={() => setSelectedGroup(group)}
-                  className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all flex items-center space-x-1.5 ${
+                  className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0 ${
                     selectedGroup === group
                       ? "bg-blood-600 text-white shadow-md shadow-blood-600/30 scale-105"
                       : "bg-slate-100 text-slate-800 hover:bg-red-50 hover:text-blood-700 border border-transparent hover:border-red-200"
@@ -361,9 +361,9 @@ export function DonorSearch({ initialDonors, onOpenDonorModal }: DonorSearchProp
                   <div className="grid grid-cols-2 gap-2">
                     <a
                       href={`tel:${donor.phone}`}
-                      className="inline-flex items-center justify-center space-x-1.5 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition-all shadow-xs"
+                      className="inline-flex items-center justify-center space-x-1.5 bg-blood-600 hover:bg-blood-700 text-white font-bold text-xs py-2 px-2 rounded-xl transition-all shadow-xs whitespace-nowrap"
                     >
-                      <FaPhone className="text-[11px]" />
+                      <FaPhone className="text-[11px] flex-shrink-0" />
                       <span>কল দিন</span>
                     </a>
 
@@ -371,9 +371,9 @@ export function DonorSearch({ initialDonors, onOpenDonorModal }: DonorSearchProp
                       href={`https://wa.me/88${donor.phone}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition-all shadow-xs"
+                      className="inline-flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-2 rounded-xl transition-all shadow-xs whitespace-nowrap"
                     >
-                      <FaWhatsapp className="text-sm" />
+                      <FaWhatsapp className="text-sm flex-shrink-0" />
                       <span>হোয়াটসঅ্যাপ</span>
                     </a>
                   </div>
@@ -381,17 +381,17 @@ export function DonorSearch({ initialDonors, onOpenDonorModal }: DonorSearchProp
                   <button
                     type="button"
                     onClick={() => handleCopyPhone(donor.phone, donor.id)}
-                    className="w-full inline-flex items-center justify-center space-x-1 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 py-1.5 rounded-lg transition-colors border border-slate-200"
+                    className="w-full inline-flex items-center justify-center space-x-1 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 py-1.5 px-2 rounded-lg transition-colors border border-slate-200 whitespace-nowrap"
                   >
                     {copiedId === donor.id ? (
                       <>
-                        <FaCheck className="text-emerald-600 text-xs" />
+                        <FaCheck className="text-emerald-600 text-xs flex-shrink-0" />
                         <span className="text-emerald-700 font-bold">নম্বর কপি হয়েছে!</span>
                       </>
                     ) : (
                       <>
-                        <FaCopy className="text-xs" />
-                        <span>নম্বর কপি করুন ({donor.phone})</span>
+                        <FaCopy className="text-xs flex-shrink-0" />
+                        <span className="truncate">নম্বর কপি: {donor.phone}</span>
                       </>
                     )}
                   </button>

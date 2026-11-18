@@ -488,8 +488,12 @@ export function AdminDashboard({
       address,
       bio,
       order,
-      image: memberImagePreview,
     };
+
+    // Only set image if a photo preview actually exists, never overwrite with empty string
+    if (memberImagePreview && memberImagePreview.trim() !== "") {
+      payload.image = memberImagePreview;
+    }
 
     if (editingMember) {
       try {
@@ -1521,7 +1525,18 @@ export function AdminDashboard({
                       <Button
                         onClick={() => {
                           setEditingMember(member);
-                          setMemberImagePreview(member.image || "");
+                          let currentImg = member.image || "";
+                          if (!currentImg && typeof window !== "undefined") {
+                            try {
+                              const localStr = localStorage.getItem("bdab_local_members");
+                              if (localStr) {
+                                const list = JSON.parse(localStr);
+                                const match = list.find((m: any) => m.id === member.id || m.registrationNumber === member.registrationNumber);
+                                if (match && match.image) currentImg = match.image;
+                              }
+                            } catch {}
+                          }
+                          setMemberImagePreview(currentImg);
                           setIsMemberModalOpen(true);
                         }}
                         variant="outline"

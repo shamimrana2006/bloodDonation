@@ -211,6 +211,12 @@ export async function modifyMember(id: string, updates: Partial<Member>): Promis
   const clean = decodeURIComponent(id).trim();
   const lower = clean.toLowerCase();
 
+  const safeUpdates = { ...updates };
+  // Never overwrite an existing photo with an empty string or blank
+  if (!safeUpdates.image || (typeof safeUpdates.image === 'string' && safeUpdates.image.trim() === '')) {
+    delete safeUpdates.image;
+  }
+
   let updatedMember: Member | null = null;
 
   try {
@@ -224,7 +230,7 @@ export async function modifyMember(id: string, updates: Partial<Member>): Promis
             { registrationNumber: { $regex: new RegExp(`^${clean}$`, 'i') } },
           ],
         },
-        { $set: updates },
+        { $set: safeUpdates },
         { new: true }
       ).lean();
 

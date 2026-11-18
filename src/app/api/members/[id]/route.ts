@@ -47,6 +47,11 @@ export async function PUT(
       }
     }
 
+    // Never erase existing image if body.image is empty or blank
+    if (!body.image || (typeof body.image === 'string' && body.image.trim() === '')) {
+      delete body.image;
+    }
+
     const updated = await modifyMember(id, body);
 
     if (!updated) {

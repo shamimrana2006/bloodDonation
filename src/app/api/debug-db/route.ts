@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import { connectToDatabase, MemberModel, DonorModel, RequestModel, NoticeModel, DeletedIdModel } from '@/lib/mongodb';
+import { MONGODB_URI, MemberModel } from '@/lib/mongodb';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,33 +11,24 @@ export async function GET() {
   };
 
   try {
-    const conn = await connectToDatabase();
-    results.connReturned = Boolean(conn);
+    const uri = MONGODB_URI;
+    results.uriHost = uri.split('@')[1]?.split('/')[0];
+    
+    // Attempt direct mongoose connect with raw error capture
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5000,
+      bufferCommands: false,
+    });
+    results.connSuccess = true;
     results.readyStateAfter = mongoose.connection.readyState;
-
-    if (conn) {
-      const memberCount = await MemberModel.countDocuments();
-      const donorCount = await DonorModel.countDocuments();
-      const requestCount = await RequestModel.countDocuments();
-      const noticeCount = await NoticeModel.countDocuments();
-      const deletedIdCount = await DeletedIdModel.countDocuments();
-
-      results.counts = {
-        members: memberCount,
-        donors: donorCount,
-        requests: requestCount,
-        notices: noticeCount,
-        deletedIds: deletedIdCount,
-      };
-
-      const sampleMembers = await MemberModel.find({}).limit(5).select('id registrationNumber name').lean();
-      results.sampleMembers = sampleMembers;
-    }
+    results.memberCount = await MemberModel.countDocuments();
   } catch (err: any) {
+    results.connSuccess = false;
     results.error = {
-      message: err?.message,
       name: err?.name,
-      stack: err?.stack,
+      message: err?.message,
+      code: err?.code,
+      reason: err?.reason ? String(err.reason) : undefined,
     };
   }
 

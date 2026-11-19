@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { cache } from "react";
 import { fetchMemberByIdOrReg } from "@/lib/store";
 import { MemberProfileClient } from "@/components/member/MemberProfileClient";
 
@@ -11,10 +12,15 @@ interface MemberPageProps {
   };
 }
 
+// Deduplicate database queries across generateMetadata and Page component
+const getMemberData = cache(async (id: string) => {
+  return await fetchMemberByIdOrReg(id);
+});
+
 export async function generateMetadata({
   params,
 }: MemberPageProps): Promise<Metadata> {
-  const member = await fetchMemberByIdOrReg(params.id);
+  const member = await getMemberData(params.id);
   if (!member) {
     return {
       title: "সদস্য প্রোফাইল | ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ",
@@ -34,7 +40,7 @@ export async function generateMetadata({
 }
 
 export default async function MemberPage({ params }: MemberPageProps) {
-  const member = await fetchMemberByIdOrReg(params.id);
+  const member = await getMemberData(params.id);
 
   return (
     <MemberProfileClient

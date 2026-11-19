@@ -371,7 +371,7 @@ export function MembersSection({ members }: MembersSectionProps) {
 
                       <Link
                         href={`/member/${member.registrationNumber || member.id}`}
-                        className="inline-flex items-center justify-center text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white h-8 rounded-xl px-1.5 transition-colors whitespace-nowrap"
+                        className="inline-flex items-center justify-center text-xs font-bold bg-slate-900 hover:bg-slate-800 active:scale-95 text-white h-8 rounded-xl px-1.5 transition-all whitespace-nowrap shadow-xs"
                       >
                         <FaArrowUpRightFromSquare className="mr-1 text-[10px] flex-shrink-0" />
                         <span className="truncate">প্রোফাইল পেজ</span>

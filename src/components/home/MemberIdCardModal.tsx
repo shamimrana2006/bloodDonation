@@ -253,7 +253,7 @@ export function MemberIdCardModal({
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-between gap-2 pt-2">
             <Link
               href={`/member/${displayMember.registrationNumber || displayMember.id}`}
-              className="inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-blood-300 border border-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
+              className="inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 active:scale-95 text-blood-300 border border-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-all whitespace-nowrap"
             >
               <FaArrowUpRightFromSquare className="mr-1.5 text-[10px] flex-shrink-0" />
               <span className="truncate">প্রোফাইল পেজ</span>

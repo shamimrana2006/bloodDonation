@@ -123,6 +123,16 @@ export function MemberProfileClient({
     window.print();
   };
 
+  // Instant back navigation without re-rendering server components
+  const handleGoBack = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = "/#members";
+    }
+  };
+
   if (!member) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -137,13 +147,14 @@ export function MemberProfileClient({
             রেজিস্ট্রেশন নম্বর &ldquo;{decodeURIComponent(identifier)}&rdquo; দিয়ে কোনো ভেরিফাইড সদস্য খুঁজে পাওয়া যায়নি।
           </p>
           <div className="space-y-3">
-            <Link
-              href="/#members"
-              className="inline-flex items-center justify-center w-full px-5 py-2.5 rounded-xl bg-blood-600 text-white font-bold text-sm hover:bg-blood-700 transition-colors"
+            <button
+              type="button"
+              onClick={handleGoBack}
+              className="inline-flex items-center justify-center w-full px-5 py-2.5 rounded-xl bg-blood-600 text-white font-bold text-sm hover:bg-blood-700 transition-colors cursor-pointer"
             >
               <FaArrowLeft className="mr-2" />
               সকল সদস্যের তালিকায় ফিরুন
-            </Link>
+            </button>
             <Link
               href="/"
               className="inline-flex items-center justify-center w-full px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200 transition-colors"
@@ -163,13 +174,14 @@ export function MemberProfileClient({
       {/* Top Bar */}
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Link
-            href="/#members"
-            className="inline-flex items-center space-x-2 text-slate-700 hover:text-blood-600 font-bold text-xs sm:text-sm transition-colors"
+          <button
+            type="button"
+            onClick={handleGoBack}
+            className="inline-flex items-center space-x-2 text-slate-700 hover:text-blood-600 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
           >
             <FaArrowLeft className="text-xs" />
             <span>সদস্য তালিকা</span>
-          </Link>
+          </button>
 
           <Link href="/" className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-full overflow-hidden border border-blood-600 bg-white p-0.5">
@@ -566,15 +578,16 @@ export function MemberProfileClient({
           </div>
         </div>
 
-        {/* Back Link */}
+        {/* Back Link - Instant 0ms history back */}
         <div className="mt-8 text-center">
-          <Link
-            href="/#members"
-            className="inline-flex items-center space-x-2 text-blood-600 hover:text-blood-700 font-bold text-sm bg-white px-5 py-2.5 rounded-full border border-red-200 shadow-xs hover:shadow-md transition-all"
+          <button
+            type="button"
+            onClick={handleGoBack}
+            className="inline-flex items-center space-x-2 text-blood-600 hover:text-blood-700 font-bold text-sm bg-white px-5 py-2.5 rounded-full border border-red-200 shadow-xs hover:shadow-md transition-all cursor-pointer"
           >
             <FaArrowLeft className="text-xs" />
             <span>সকল সদস্য ও কেন্দ্রীয় কমিটির তালিকায় ফিরে যান</span>
-          </Link>
+          </button>
         </div>
       </main>
     </div>

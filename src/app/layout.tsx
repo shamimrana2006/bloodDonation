@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { DeveloperModal } from '@/components/common/DeveloperModal';
+import { TopProgressBar } from '@/components/common/TopProgressBar';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://blooddonationassociation.vercel.app'),
@@ -37,6 +38,8 @@ export default function RootLayout({
         <link rel="icon" href="/logo.png" />
       </head>
       <body className="min-h-screen flex flex-col antialiased text-slate-800">
+        {/* Instant navigation progress bar for 0ms visual feedback */}
+        <TopProgressBar />
         {children}
         {/* Global developer card modal triggered via Ctrl + Shift + N */}
         <DeveloperModal />

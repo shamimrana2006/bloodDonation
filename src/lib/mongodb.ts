@@ -22,7 +22,6 @@ if (!global.mongooseCache) {
 }
 
 export async function connectToDatabase(): Promise<typeof mongoose | null> {
-  // Directly connect using the hardcoded URI
   const uri = MONGODB_URI;
 
   if (cached.conn) {
@@ -33,6 +32,9 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
     const opts = {
       bufferCommands: false,
       serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10,
+      minPoolSize: 1,
+      socketTimeoutMS: 20000,
     };
 
     cached.promise = mongoose.connect(uri, opts).then((mongooseInstance) => {
@@ -42,31 +44,6 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
 
   try {
     cached.conn = await cached.promise;
-    
-    // Auto-seed if collections are empty on first run
-    if (!cached.seeded && cached.conn) {
-      cached.seeded = true;
-      try {
-        const donorCount = await DonorModel.countDocuments();
-        if (donorCount === 0) {
-          await DonorModel.insertMany(INITIAL_DONORS);
-        }
-        const memberCount = await MemberModel.countDocuments();
-        if (memberCount === 0) {
-          await MemberModel.insertMany(INITIAL_MEMBERS);
-        }
-        const reqCount = await RequestModel.countDocuments();
-        if (reqCount === 0) {
-          await RequestModel.insertMany(INITIAL_REQUESTS);
-        }
-        const noticeCount = await NoticeModel.countDocuments();
-        if (noticeCount === 0) {
-          await NoticeModel.insertMany(INITIAL_NOTICES);
-        }
-      } catch (seedErr) {
-        console.error('Seed error:', seedErr);
-      }
-    }
   } catch (e: any) {
     cached.promise = null;
     console.error('MongoDB Atlas Notice:', e?.message || e);

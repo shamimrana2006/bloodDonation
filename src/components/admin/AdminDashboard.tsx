@@ -90,6 +90,7 @@ export function AdminDashboard({
 
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [memberRegNoInput, setMemberRegNoInput] = useState<string>("");
   const [memberImagePreview, setMemberImagePreview] = useState<string>("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -590,7 +591,8 @@ export function AdminDashboard({
       const name = (form.elements.namedItem("memberName") as HTMLInputElement).value;
       const role = (form.elements.namedItem("memberRole") as HTMLInputElement).value;
       const committeeLevel = (form.elements.namedItem("memberCommitteeLevel") as HTMLSelectElement).value as any;
-      const regNo = (form.elements.namedItem("memberRegNo") as HTMLInputElement).value.trim();
+      const regInput = form.elements.namedItem("memberRegNo") as HTMLInputElement | null;
+      const regNo = (regInput?.value || memberRegNoInput || "").trim();
       const phone = (form.elements.namedItem("memberPhone") as HTMLInputElement).value;
       const bloodGroup = (form.elements.namedItem("memberBloodGroup") as HTMLSelectElement).value as BloodGroup;
       const district = (form.elements.namedItem("memberDistrict") as HTMLInputElement).value.trim() || "জামালপুর";
@@ -599,11 +601,11 @@ export function AdminDashboard({
       const bio = (form.elements.namedItem("memberBio") as HTMLTextAreaElement).value;
       const order = parseInt((form.elements.namedItem("memberOrder") as HTMLInputElement).value, 10) || 99;
 
-      // Ensure clean BDAB-xxx registration number (e.g. BDAB-009, BDAB-010)
-      let finalRegNo = regNo?.trim();
+      // Handle Registration Number (controlled state / input value)
+      let finalRegNo = regNo;
       if (!finalRegNo) {
         if (editingMember?.registrationNumber) {
-          finalRegNo = editingMember.registrationNumber;
+          finalRegNo = editingMember.registrationNumber.trim();
         } else {
           let maxSerial = 0;
           members.forEach((m) => {
@@ -618,9 +620,10 @@ export function AdminDashboard({
           finalRegNo = `BDAB-${String(maxSerial + 1).padStart(3, "0")}`;
         }
       } else {
-        const match = finalRegNo.match(/(\d+)/);
-        if (match) {
-          finalRegNo = `BDAB-${String(parseInt(match[1], 10)).padStart(3, "0")}`;
+        // If user typed pure digits (e.g. "5" or "005"), format as BDAB-005 for convenience.
+        // Otherwise keep whatever registration number the admin entered!
+        if (/^\d+$/.test(finalRegNo)) {
+          finalRegNo = `BDAB-${String(parseInt(finalRegNo, 10)).padStart(3, "0")}`;
         }
       }
 
@@ -645,6 +648,9 @@ export function AdminDashboard({
 
       if (editingMember) {
         unmarkIdAsDeleted(editingMember.id, editingMember.registrationNumber);
+        if (finalRegNo && finalRegNo !== editingMember.registrationNumber) {
+          unmarkIdAsDeleted(editingMember.id, finalRegNo);
+        }
         try {
           const res = await fetch(`/api/members/${encodeURIComponent(editingMember.id)}`, {
             method: "PUT",
@@ -743,6 +749,7 @@ export function AdminDashboard({
       setIsMemberModalOpen(false);
       setEditingMember(null);
       setMemberImagePreview("");
+      setMemberRegNoInput("");
     } finally {
       setIsSavingMember(false);
     }
@@ -1683,6 +1690,7 @@ export function AdminDashboard({
                 onClick={() => {
                   setEditingMember(null);
                   setMemberImagePreview("");
+                  setMemberRegNoInput("");
                   setIsMemberModalOpen(true);
                 }}
                 className="bg-blood-600 hover:bg-blood-700 text-white text-xs font-bold"
@@ -1754,8 +1762,8 @@ export function AdminDashboard({
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-3">
-                      <span className="font-mono text-[10px] font-bold text-blood-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
-                        {member.registrationNumber || member.id}
+                      <span className="font-mono text-[10px] font-bold text-blood-700 bg-red-50 px-2.5 py-0.5 rounded border border-red-200">
+                        আইডি: {member.registrationNumber || member.id}
                       </span>
                       <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
                         {member.committeeLevel || "কেন্দ্রীয় কমিটি"}
@@ -1850,6 +1858,7 @@ export function AdminDashboard({
                       <Button
                         onClick={() => {
                           setEditingMember(member);
+                          setMemberRegNoInput(member.registrationNumber || "");
                           let currentImg = member.image || "";
                           if (!currentImg && typeof window !== "undefined") {
                             try {
@@ -2050,6 +2059,7 @@ export function AdminDashboard({
             setIsMemberModalOpen(false);
             setEditingMember(null);
             setMemberImagePreview("");
+            setMemberRegNoInput("");
           }
         }}
       >
@@ -2059,12 +2069,16 @@ export function AdminDashboard({
               {editingMember ? "সদস্যের তথ্য পরিবর্তন করুন" : "নতুন সদস্য যুক্ত করুন"}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              সদস্যের নাম, পদবী, যোগাযোগের নম্বর, ঠিকানা ও ছবি আপলোড করুন।
+              সদস্যের নাম, পদবী, যোগাযোগের নম্বর, রেজিস্ট্রেশন নম্বর ও ছবি সেভ করুন (ডাটাবেজে সংরক্ষিত)।
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSaveMember} className="space-y-3 pt-2 text-xs">
-            {/* Photo Upload & Preview with Cloudinary */}
+          <form
+            key={editingMember ? editingMember.id : "new-member"}
+            onSubmit={handleSaveMember}
+            className="space-y-3 pt-2 text-xs"
+          >
+            {/* Photo Upload & Preview with Cloud Database Storage */}
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blood-600 bg-white flex items-center justify-center flex-shrink-0 relative">
@@ -2086,16 +2100,21 @@ export function AdminDashboard({
 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700">
-                      সদস্যের ছবি আপলোড (Cloudinary)
-                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <label className="block text-xs font-bold text-slate-700">
+                        সদস্যের প্রোফাইল ছবি
+                      </label>
+                      <Badge className="bg-emerald-600 text-white text-[9px] px-1.5 py-0">
+                        ডাটাবেজে সংরক্ষিত
+                      </Badge>
+                    </div>
                     {isUploadingImage ? (
-                      <span className="text-[10px] font-bold text-amber-600 animate-pulse">
-                        আপলোড হচ্ছে...
+                      <span className="text-[10px] font-bold text-amber-600 animate-pulse flex items-center gap-1">
+                        <FaSpinner className="animate-spin text-[9px]" /> আপলোড হচ্ছে...
                       </span>
-                    ) : memberImagePreview && memberImagePreview.includes("cloudinary") ? (
+                    ) : memberImagePreview ? (
                       <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
-                        <FaCheck className="text-[9px]" /> ক্লাউডে সেভড
+                        <FaCheck className="text-[9px]" /> ডাটাবেজে সেভ হতে প্রস্তুত
                       </span>
                     ) : null}
                   </div>
@@ -2107,6 +2126,9 @@ export function AdminDashboard({
                     disabled={isUploadingImage}
                     className="text-xs text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blood-50 file:text-blood-700 hover:file:bg-blood-100 cursor-pointer disabled:opacity-50"
                   />
+                  <p className="text-[10px] text-slate-500">
+                    ✅ প্রতিটি সদস্যের ছবি সরাসরি আমাদের ক্লাউড ডাটাবেজে (MongoDB) স্থায়ীভাবে সংরক্ষিত থাকে।
+                  </p>
                   {uploadError && (
                     <p className="text-[10px] text-red-600 font-semibold">{uploadError}</p>
                   )}
@@ -2116,15 +2138,24 @@ export function AdminDashboard({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  রেজিস্ট্রেশন নম্বর (ID)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700 block">
+                    রেজিস্ট্রেশন নম্বর (ID)
+                  </label>
+                  <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                    ✏️ পরিবর্তনযোগ্য
+                  </span>
+                </div>
                 <Input
                   name="memberRegNo"
-                  defaultValue={editingMember?.registrationNumber || ""}
-                  placeholder="যেমন: BDAB-009 (ফাঁকা রাখলে স্বয়ংক্রিয়ভাবে পরবর্তী সিরিয়াল যুক্ত হবে)"
-                  className="h-9 font-mono"
+                  value={memberRegNoInput}
+                  onChange={(e) => setMemberRegNoInput(e.target.value)}
+                  placeholder="যেমন: BDAB-009 বা BDAB-785"
+                  className="h-9 font-mono font-bold text-blood-700 bg-blue-50/40 border-blue-300 focus:border-blue-500"
                 />
+                <p className="text-[10px] text-slate-500 mt-1 leading-tight">
+                  💡 সদস্যের এই আইডিটি ইচ্ছামতো পরিবর্তন করতে পারবেন (যেমন: BDAB-001, BDAB-785 ইত্যাদি)। পরিবর্তন করতে চাইলে নতুন নম্বর লিখুন, আর ফাঁকা রাখলে স্বয়ংক্রিয়ভাবে পরবর্তী সিরিয়াল বসবে।
+                </p>
               </div>
 
               <div>
@@ -2320,6 +2351,7 @@ export function AdminDashboard({
           </DialogHeader>
 
           <form
+            key={editingDonor ? editingDonor.id : "new-donor"}
             onSubmit={(e) => {
               e.preventDefault();
               const form = e.target as any;

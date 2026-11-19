@@ -73,11 +73,9 @@ export async function POST(request: Request) {
       const nextSerial = maxSerial + 1;
       regNum = `BDAB-${String(nextSerial).padStart(3, '0')}`;
     } else {
-      // If user typed 9 or BDAB-9 or BDAB-C-009, sanitize to BDAB-xxx
-      const numMatch = regNum.match(/(\d+)/);
-      if (numMatch) {
-        const num = parseInt(numMatch[1], 10);
-        regNum = `BDAB-${String(num).padStart(3, '0')}`;
+      // If user typed pure digits (e.g. "9" or "009"), format cleanly as BDAB-009
+      if (/^\d+$/.test(regNum)) {
+        regNum = `BDAB-${String(parseInt(regNum, 10)).padStart(3, '0')}`;
       }
     }
 

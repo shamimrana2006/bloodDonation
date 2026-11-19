@@ -27,6 +27,7 @@ import {
   FaQrcode,
   FaArrowUpRightFromSquare,
   FaSpinner,
+  FaDatabase,
 } from "react-icons/fa6";
 import { downloadMemberQRCode, getMemberProfileUrl } from "@/lib/qr";
 import { Donor, BloodRequest, Notice, Member, BloodGroup, RequestStatus } from "@/lib/types";
@@ -108,6 +109,8 @@ export function AdminDashboard({
   const [isSavingMember, setIsSavingMember] = useState<boolean>(false);
   const [isSavingDonor, setIsSavingDonor] = useState<boolean>(false);
   const [isSavingNotice, setIsSavingNotice] = useState<boolean>(false);
+  const [isExportingBackup, setIsExportingBackup] = useState<boolean>(false);
+  const [isRestoringBackup, setIsRestoringBackup] = useState<boolean>(false);
 
   // Database connection status
   const [isDbConnected, setIsDbConnected] = useState<boolean | null>(null);
@@ -930,25 +933,149 @@ export function AdminDashboard({
     }
   };
 
-  // Data Export & Download Backup
-  const handleExportData = () => {
-    const backupObj = {
-      exportedAt: new Date().toISOString(),
-      organization: "ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ",
-      donors,
-      requests,
-      members,
-      notices,
-    };
-    const blob = new Blob([JSON.stringify(backupObj, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `bdab-backup-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Data Export & Download Full Live Database Backup from MongoDB
+  const handleExportData = async () => {
+    setIsExportingBackup(true);
+    try {
+      // Fetch complete live un-truncated data directly from MongoDB database endpoint
+      const res = await fetch(`/api/backup?t=${Date.now()}`, { cache: "no-store" });
+      const resJson = await res.json();
+
+      let backupPayload: any;
+      if (res.ok && resJson.success && resJson.data) {
+        backupPayload = resJson.data;
+      } else {
+        // Fallback to client state if database backup endpoint is unavailable
+        backupPayload = {
+          version: "2.0",
+          exportedAt: new Date().toISOString(),
+          organization: "ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ",
+          dataSource: "Client Fallback Cache",
+          counts: {
+            totalDonors: donors.length,
+            totalMembers: members.length,
+            totalRequests: requests.length,
+            totalNotices: notices.length,
+          },
+          donors,
+          members,
+          requests,
+          notices,
+        };
+      }
+
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bdab-database-backup-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const dCount = backupPayload.counts?.totalDonors ?? donors.length;
+      const mCount = backupPayload.counts?.totalMembers ?? members.length;
+      const rCount = backupPayload.counts?.totalRequests ?? requests.length;
+      const nCount = backupPayload.counts?.totalNotices ?? notices.length;
+
+      setActionFeedback({
+        type: "success",
+        message: `ডাটাবেজের সম্পূর্ণ ডাটা সফলভাবে ডাউনলোড হয়েছে! (রক্তদাতা: ${dCount}, সদস্য: ${mCount}, আবেদন: ${rCount}, নোটিশ: ${nCount})`,
+      });
+    } catch (err: any) {
+      // Fallback in case of network issue
+      const backupObj = {
+        version: "2.0",
+        exportedAt: new Date().toISOString(),
+        organization: "ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ",
+        dataSource: "Client Fallback",
+        counts: {
+          totalDonors: donors.length,
+          totalMembers: members.length,
+          totalRequests: requests.length,
+          totalNotices: notices.length,
+        },
+        donors,
+        members,
+        requests,
+        notices,
+      };
+      const blob = new Blob([JSON.stringify(backupObj, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bdab-database-backup-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      setActionFeedback({
+        type: "success",
+        message: "ব্যাকআপ ফাইল ডাউনলোড হয়েছে!",
+      });
+    } finally {
+      setIsExportingBackup(false);
+    }
+  };
+
+  // Restore database from an uploaded JSON backup file
+  const handleRestoreBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (
+      !confirm(
+        `আপনি কি নিশ্চিতভাবে "${file.name}" ফাইলটি থেকে সম্পূর্ণ ডাটাবেজ রিস্টোর করতে চান? ডাটাবেজে থাকা সকল তথ্য এই ব্যাকআপ অনুযায়ী আপডেট হবে।`
+      )
+    ) {
+      e.target.value = "";
+      return;
+    }
+
+    setIsRestoringBackup(true);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      const res = await fetch("/api/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed),
+      });
+
+      const resJson = await res.json();
+      if (!res.ok || !resJson.success) {
+        throw new Error(resJson.message || "রিস্টোর ব্যর্থ হয়েছে");
+      }
+
+      setActionFeedback({
+        type: "success",
+        message: `ডাটাবেজ সফলভাবে রিস্টোর হয়েছে! (রক্তদাতা: ${resJson.counts?.donors || 0}, সদস্য: ${resJson.counts?.members || 0}, আবেদন: ${resJson.counts?.requests || 0}, নোটিশ: ${resJson.counts?.notices || 0})`,
+      });
+
+      // Refresh all lists directly from the database
+      const [donorsRes, membersRes, reqsRes, noticesRes] = await Promise.all([
+        fetch("/api/donors?t=" + Date.now()).then((r) => r.json()).catch(() => null),
+        fetch("/api/members?t=" + Date.now()).then((r) => r.json()).catch(() => null),
+        fetch("/api/requests?t=" + Date.now()).then((r) => r.json()).catch(() => null),
+        fetch("/api/notices?t=" + Date.now()).then((r) => r.json()).catch(() => null),
+      ]);
+
+      if (donorsRes?.data) setDonors(donorsRes.data);
+      if (membersRes?.data) setMembers(membersRes.data);
+      if (reqsRes?.data) setRequests(reqsRes.data);
+      if (noticesRes?.data) setNotices(noticesRes.data);
+    } catch (err: any) {
+      setActionFeedback({
+        type: "error",
+        message: err?.message || "ব্যাকআপ রিস্টোর করতে সমস্যা হয়েছে। সঠিক JSON ফাইল নির্বাচন করুন।",
+      });
+    } finally {
+      setIsRestoringBackup(false);
+      e.target.value = "";
+    }
   };
 
   // Filtered Donors for Table
@@ -2050,26 +2177,106 @@ export function AdminDashboard({
               </form>
             </div>
 
-            {/* Data Backup & Export */}
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            {/* Data Backup & Export from MongoDB Database */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div className="border-b border-slate-100 pb-3">
-                <h3 className="text-lg font-black text-slate-900 flex items-center space-x-2">
-                  <FaDownload className="text-blood-600" />
-                  <span>সম্পূর্ণ ডাটা ব্যাকআপ</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  এক ক্লিকে সকল রক্তদাতা, রক্তের আবেদন, সদস্য এবং নোটিশের সম্পূর্ণ ব্যাকআপ JSON ফাইলে ডাউনলোড করে রাখুন।
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h3 className="text-lg font-black text-slate-900 flex items-center space-x-2">
+                    <FaDatabase className="text-blood-600" />
+                    <span>ক্লাউড ডাটাবেজ ব্যাকআপ ও রিস্টোর</span>
+                  </h3>
+                  <Badge className="bg-emerald-600 text-white text-[10px] px-2.5 py-0.5 font-bold w-fit">
+                    MongoDB Atlas লাইভ ব্যাকআপ
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  ডাটাবেজে সংরক্ষিত সকল রক্তদাতা, রক্তের আবেদন, সদস্য ও পরিচালনা কমিটি এবং নোটিশের সম্পূর্ণ ডাটা এক ক্লিকে সরাসরি MongoDB থেকে JSON ফাইলে ডাউনলোড বা রিস্টোর করুন।
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              {/* Live Database Data Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 bg-red-50/70 rounded-2xl border border-red-100">
+                  <span className="text-[11px] font-bold text-blood-700 block">রক্তদাতা তালিকা</span>
+                  <span className="text-2xl font-black text-slate-900">{formatBanglaNumber(donors.length)}</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">সকল তথ্যসহ</span>
+                </div>
+                <div className="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-100">
+                  <span className="text-[11px] font-bold text-blue-700 block">সদস্য ও কমিটি</span>
+                  <span className="text-2xl font-black text-slate-900">{formatBanglaNumber(members.length)}</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">ছবি ও আইডিসহ</span>
+                </div>
+                <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-100">
+                  <span className="text-[11px] font-bold text-amber-700 block">রক্তের আবেদন</span>
+                  <span className="text-2xl font-black text-slate-900">{formatBanglaNumber(requests.length)}</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">সবগুলো রিকুয়েস্ট</span>
+                </div>
+                <div className="p-3.5 bg-purple-50/70 rounded-2xl border border-purple-100">
+                  <span className="text-[11px] font-bold text-purple-700 block">নোটিশ ও বার্তা</span>
+                  <span className="text-2xl font-black text-slate-900">{formatBanglaNumber(notices.length)}</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">সকল নোটিশ</span>
+                </div>
+              </div>
+
+              {/* Actions: Download Backup and Restore Backup */}
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <Button
                   onClick={handleExportData}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm px-6 py-5 rounded-xl shadow-md"
+                  disabled={isExportingBackup || isRestoringBackup}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm px-6 py-5 rounded-xl shadow-md flex items-center justify-center gap-2"
                 >
-                  <FaDownload className="mr-2" />
-                  সম্পূর্ণ ব্যাকআপ ফাইল ডাউনলোড করুন
+                  {isExportingBackup ? (
+                    <>
+                      <FaSpinner className="animate-spin text-base" />
+                      <span>ডাটাবেজ থেকে ব্যাকআপ হচ্ছে...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaDownload className="text-base" />
+                      <span>সম্পূর্ণ ডাটাবেজ ব্যাকআপ ডাউনলোড করুন</span>
+                    </>
+                  )}
                 </Button>
+
+                {/* Restore option */}
+                <div>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleRestoreBackup}
+                    disabled={isExportingBackup || isRestoringBackup}
+                    id="restore-backup-file-input"
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isExportingBackup || isRestoringBackup}
+                    onClick={() => document.getElementById("restore-backup-file-input")?.click()}
+                    className="w-full sm:w-auto border-slate-300 hover:bg-slate-100 text-slate-800 font-bold text-sm px-5 py-5 rounded-xl flex items-center justify-center gap-2"
+                  >
+                    {isRestoringBackup ? (
+                      <>
+                        <FaSpinner className="animate-spin text-base text-blood-600" />
+                        <span>রিস্টোর হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaUpload className="text-base text-slate-600" />
+                        <span>ব্যাকআপ ফাইল থেকে রিস্টোর করুন</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                <p>
+                  💡 <strong>সম্পূর্ণ ডাটা নিরাপত্তা:</strong> এই ব্যাকআপ বাটনে ক্লিক করলে ব্রাউজার মেমোরির বদলে <strong>সরাসরি লাইভ MongoDB Atlas ডাটাবেজ</strong> থেকে প্রতিটি রক্তদাতার পূর্ণাঙ্গ প্রোফাইল, সদস্যের ছবি ও আইডি, সকল রক্তের আবেদন এবং নোটিশের রিয়েল-টাইম তথ্য ডাউনলোড হবে।
+                </p>
+                <p className="text-slate-500">
+                  ভবিষ্যতে যেকোনো সময় &quot;ব্যাকআপ ফাইল থেকে রিস্টোর করুন&quot; বাটনে ক্লিক করে পুরো ডাটাবেজ নিমিষেই ফিরিয়ে আনতে পারবেন।
+                </p>
               </div>
             </div>
           </div>

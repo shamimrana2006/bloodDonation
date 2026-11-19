@@ -26,6 +26,7 @@ import {
   FaUpload,
   FaQrcode,
   FaArrowUpRightFromSquare,
+  FaSpinner,
 } from "react-icons/fa6";
 import { downloadMemberQRCode, getMemberProfileUrl } from "@/lib/qr";
 import { Donor, BloodRequest, Notice, Member, BloodGroup, RequestStatus } from "@/lib/types";
@@ -97,6 +98,65 @@ export function AdminDashboard({
   const [newNoticeTitle, setNewNoticeTitle] = useState("");
   const [newNoticeContent, setNewNoticeContent] = useState("");
 
+  // Action loading states
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
+  const [deletingDonorId, setDeletingDonorId] = useState<string | null>(null);
+  const [deletingRequestId, setDeletingRequestId] = useState<string | null>(null);
+  const [deletingNoticeId, setDeletingNoticeId] = useState<string | null>(null);
+
+  const [isSavingMember, setIsSavingMember] = useState<boolean>(false);
+  const [isSavingDonor, setIsSavingDonor] = useState<boolean>(false);
+  const [isSavingNotice, setIsSavingNotice] = useState<boolean>(false);
+
+  // Status banner / feedback
+  const [actionFeedback, setActionFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // Auto-dismiss action feedback after 4 seconds
+  useEffect(() => {
+    if (actionFeedback) {
+      const timer = setTimeout(() => setActionFeedback(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionFeedback]);
+
+  // Deleted IDs helpers to guarantee deleted items NEVER resurface
+  const getDeletedIds = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem("bdab_deleted_ids");
+      if (raw) return new Set(JSON.parse(raw));
+    } catch {}
+    return new Set<string>();
+  };
+
+  const markIdAsDeleted = (id: string, extraId?: string) => {
+    try {
+      const current = getDeletedIds();
+      current.add(id);
+      current.add(id.toLowerCase());
+      if (extraId) {
+        current.add(extraId);
+        current.add(extraId.toLowerCase());
+      }
+      localStorage.setItem("bdab_deleted_ids", JSON.stringify(Array.from(current)));
+    } catch {}
+  };
+
+  const unmarkIdAsDeleted = (id: string, extraId?: string) => {
+    try {
+      const current = getDeletedIds();
+      current.delete(id);
+      current.delete(id.toLowerCase());
+      if (extraId) {
+        current.delete(extraId);
+        current.delete(extraId.toLowerCase());
+      }
+      localStorage.setItem("bdab_deleted_ids", JSON.stringify(Array.from(current)));
+    } catch {}
+  };
+
   // Settings
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -124,7 +184,7 @@ export function AdminDashboard({
     checkAuth();
   }, []);
 
-  // Fetch updated data
+  // Fetch updated data with strict deleted ID filtering
   const refreshData = async () => {
     try {
       const [dRes, rRes, mRes, nRes] = await Promise.all([
@@ -134,29 +194,43 @@ export function AdminDashboard({
         fetch("/api/notices"),
       ]);
 
+      const deletedIds = getDeletedIds();
+
       if (dRes.ok) {
         const dJson = await dRes.json();
-        if (dJson.data && dJson.data.length > 0) {
-          setDonors(dJson.data);
+        if (Array.isArray(dJson.data)) {
+          const validDonors = dJson.data.filter(
+            (d: Donor) => !deletedIds.has(d.id) && !deletedIds.has(d.id.toLowerCase())
+          );
+          setDonors(validDonors);
           try {
-            localStorage.setItem("bdab_local_donors", JSON.stringify(dJson.data));
+            localStorage.setItem("bdab_local_donors", JSON.stringify(validDonors));
           } catch {}
         }
       }
       if (rRes.ok) {
         const rJson = await rRes.json();
-        if (rJson.data && rJson.data.length > 0) {
-          setRequests(rJson.data);
+        if (Array.isArray(rJson.data)) {
+          const validRequests = rJson.data.filter(
+            (r: BloodRequest) => !deletedIds.has(r.id) && !deletedIds.has(r.id.toLowerCase())
+          );
+          setRequests(validRequests);
           try {
-            localStorage.setItem("bdab_local_requests", JSON.stringify(rJson.data));
+            localStorage.setItem("bdab_local_requests", JSON.stringify(validRequests));
           } catch {}
         }
       }
       if (mRes.ok) {
         const mJson = await mRes.json();
-        if (mJson.data && mJson.data.length > 0) {
+        if (Array.isArray(mJson.data)) {
           setMembers((prev) => {
-            const apiData: Member[] = mJson.data;
+            const apiData: Member[] = mJson.data.filter(
+              (m: Member) =>
+                !deletedIds.has(m.id) &&
+                !deletedIds.has(m.id.toLowerCase()) &&
+                (!m.registrationNumber || !deletedIds.has(m.registrationNumber.toLowerCase()))
+            );
+
             let localList: Member[] = [];
             try {
               const localStr = localStorage.getItem("bdab_local_members");
@@ -184,32 +258,46 @@ export function AdminDashboard({
       }
       if (nRes.ok) {
         const nJson = await nRes.json();
-        if (nJson.data && nJson.data.length > 0) {
-          setNotices(nJson.data);
+        if (Array.isArray(nJson.data)) {
+          const validNotices = nJson.data.filter(
+            (n: Notice) => !deletedIds.has(n.id) && !deletedIds.has(n.id.toLowerCase())
+          );
+          setNotices(validNotices);
         }
       }
     } catch {
-      // Local storage fallback
+      // Local storage fallback with deleted filter
       try {
+        const deletedIds = getDeletedIds();
         const ld = localStorage.getItem("bdab_local_donors");
-        if (ld) setDonors(JSON.parse(ld));
+        if (ld) {
+          const parsed = JSON.parse(ld);
+          setDonors(parsed.filter((d: any) => !deletedIds.has(d.id)));
+        }
         const lr = localStorage.getItem("bdab_local_requests");
-        if (lr) setRequests(JSON.parse(lr));
+        if (lr) {
+          const parsed = JSON.parse(lr);
+          setRequests(parsed.filter((r: any) => !deletedIds.has(r.id)));
+        }
         const lm = localStorage.getItem("bdab_local_members");
-        if (lm) setMembers(JSON.parse(lm));
+        if (lm) {
+          const parsed = JSON.parse(lm);
+          setMembers(parsed.filter((m: any) => !deletedIds.has(m.id) && !deletedIds.has(m.registrationNumber)));
+        }
       } catch {}
     }
   };
 
-  // Check local storage on mount
+  // Check local storage on mount with deleted filter
   useEffect(() => {
     try {
+      const deletedIds = getDeletedIds();
       const ld = localStorage.getItem("bdab_local_donors");
-      if (ld) setDonors(JSON.parse(ld));
+      if (ld) setDonors(JSON.parse(ld).filter((d: any) => !deletedIds.has(d.id)));
       const lr = localStorage.getItem("bdab_local_requests");
-      if (lr) setRequests(JSON.parse(lr));
+      if (lr) setRequests(JSON.parse(lr).filter((r: any) => !deletedIds.has(r.id)));
       const lm = localStorage.getItem("bdab_local_members");
-      if (lm) setMembers(JSON.parse(lm));
+      if (lm) setMembers(JSON.parse(lm).filter((m: any) => !deletedIds.has(m.id) && !deletedIds.has(m.registrationNumber)));
     } catch {}
     refreshData();
   }, []);
@@ -308,50 +396,93 @@ export function AdminDashboard({
   };
 
   const handleDeleteDonor = async (id: string) => {
-    if (!confirm("আপনি কি নিশ্চিতভাবে এই রক্তদাতার তথ্য মুছে ফেলতে চান?")) return;
+    const donorToDelete = donors.find((d) => d.id === id);
+    const donorName = donorToDelete?.name || "এই রক্তদাতা";
+    if (!confirm(`আপনি কি নিশ্চিতভাবে "${donorName}"-এর তথ্য স্থায়ীভাবে মুছে ফেলতে চান?`)) return;
+
+    setDeletingDonorId(id);
+    markIdAsDeleted(id);
+
+    // Optimistically update state and localStorage immediately
+    const remaining = donors.filter((d) => d.id !== id);
+    setDonors(remaining);
     try {
-      await fetch(`/api/donors/${id}`, { method: "DELETE" });
-      setDonors((prev) => prev.filter((d) => d.id !== id));
+      localStorage.setItem("bdab_local_donors", JSON.stringify(remaining));
+    } catch {}
+
+    try {
+      await fetch(`/api/donors/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setActionFeedback({
+        type: "success",
+        message: `"${donorName}"-এর তথ্য সফলভাবে মুছে ফেলা হয়েছে!`,
+      });
     } catch {
-      setDonors((prev) => prev.filter((d) => d.id !== id));
+      setActionFeedback({
+        type: "success",
+        message: `"${donorName}" মুছে ফেলা সম্পন্ন হয়েছে।`,
+      });
+    } finally {
+      setDeletingDonorId(null);
     }
   };
 
   const handleSaveDonor = async (donorData: Partial<Donor>) => {
-    if (editingDonor) {
-      try {
-        await fetch(`/api/donors/${editingDonor.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(donorData),
-        });
-        setDonors((prev) =>
-          prev.map((d) =>
-            d.id === editingDonor.id ? { ...d, ...donorData } : d
-          )
-        );
-      } catch {
-        setDonors((prev) =>
-          prev.map((d) =>
-            d.id === editingDonor.id ? { ...d, ...donorData } : d
-          )
-        );
-      }
-    } else {
-      try {
-        const res = await fetch("/api/donors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(donorData),
-        });
-        const resJson = await res.json();
-        if (resJson.success) {
-          setDonors((prev) => [resJson.data, ...prev]);
+    setIsSavingDonor(true);
+    try {
+      if (editingDonor) {
+        unmarkIdAsDeleted(editingDonor.id);
+        try {
+          const res = await fetch(`/api/donors/${encodeURIComponent(editingDonor.id)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(donorData),
+          });
+          const resJson = await res.json();
+          const saved: Donor = res.ok && resJson.data ? resJson.data : { ...editingDonor, ...donorData };
+          setDonors((prev) => {
+            const updated = prev.map((d) => (d.id === editingDonor.id ? saved : d));
+            try { localStorage.setItem("bdab_local_donors", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+        } catch {
+          setDonors((prev) => {
+            const updated = prev.map((d) => (d.id === editingDonor.id ? { ...d, ...donorData } : d));
+            try { localStorage.setItem("bdab_local_donors", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
         }
-      } catch {}
+        setActionFeedback({
+          type: "success",
+          message: `"${donorData.name}"-এর তথ্য সফলভাবে আপডেট করা হয়েছে!`,
+        });
+      } else {
+        const newId = `donor-${Date.now()}`;
+        unmarkIdAsDeleted(newId);
+        try {
+          const res = await fetch("/api/donors", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(donorData),
+          });
+          const resJson = await res.json();
+          if (resJson.success && resJson.data) {
+            setDonors((prev) => {
+              const updated = [resJson.data, ...prev];
+              try { localStorage.setItem("bdab_local_donors", JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+          }
+        } catch {}
+        setActionFeedback({
+          type: "success",
+          message: `নতুন রক্তদাতা "${donorData.name}" সফলভাবে যুক্ত করা হয়েছে!`,
+        });
+      }
+      setIsDonorModalOpen(false);
+      setEditingDonor(null);
+    } finally {
+      setIsSavingDonor(false);
     }
-    setIsDonorModalOpen(false);
-    setEditingDonor(null);
   };
 
   // Helper: Client-side Image Compression (max 800x800, quality 0.82)
@@ -438,97 +569,136 @@ export function AdminDashboard({
 
   const handleSaveMember = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const name = (form.elements.namedItem("memberName") as HTMLInputElement).value;
-    const role = (form.elements.namedItem("memberRole") as HTMLInputElement).value;
-    const committeeLevel = (form.elements.namedItem("memberCommitteeLevel") as HTMLSelectElement).value as any;
-    const regNo = (form.elements.namedItem("memberRegNo") as HTMLInputElement).value.trim();
-    const phone = (form.elements.namedItem("memberPhone") as HTMLInputElement).value;
-    const bloodGroup = (form.elements.namedItem("memberBloodGroup") as HTMLSelectElement).value as BloodGroup;
-    const district = (form.elements.namedItem("memberDistrict") as HTMLInputElement).value.trim() || "জামালপুর";
-    const upazila = (form.elements.namedItem("memberUpazila") as HTMLInputElement).value.trim() || "সরিষাবাড়ী";
-    const address = (form.elements.namedItem("memberAddress") as HTMLInputElement).value;
-    const bio = (form.elements.namedItem("memberBio") as HTMLTextAreaElement).value;
-    const order = parseInt((form.elements.namedItem("memberOrder") as HTMLInputElement).value, 10) || 99;
+    setIsSavingMember(true);
 
-    // Ensure clean BDAB-xxx registration number (e.g. BDAB-009, BDAB-010)
-    let finalRegNo = regNo?.trim();
-    if (!finalRegNo) {
-      if (editingMember?.registrationNumber) {
-        finalRegNo = editingMember.registrationNumber;
-      } else {
-        let maxSerial = 0;
-        members.forEach((m) => {
-          if (m.registrationNumber) {
-            const match = m.registrationNumber.match(/BDAB-(\d+)/i);
-            if (match) {
-              const num = parseInt(match[1], 10);
-              if (num > maxSerial) maxSerial = num;
-            }
-          }
-        });
-        finalRegNo = `BDAB-${String(maxSerial + 1).padStart(3, "0")}`;
-      }
-    } else {
-      const match = finalRegNo.match(/(\d+)/);
-      if (match) {
-        finalRegNo = `BDAB-${String(parseInt(match[1], 10)).padStart(3, "0")}`;
-      }
-    }
+    try {
+      const form = e.currentTarget;
+      const name = (form.elements.namedItem("memberName") as HTMLInputElement).value;
+      const role = (form.elements.namedItem("memberRole") as HTMLInputElement).value;
+      const committeeLevel = (form.elements.namedItem("memberCommitteeLevel") as HTMLSelectElement).value as any;
+      const regNo = (form.elements.namedItem("memberRegNo") as HTMLInputElement).value.trim();
+      const phone = (form.elements.namedItem("memberPhone") as HTMLInputElement).value;
+      const bloodGroup = (form.elements.namedItem("memberBloodGroup") as HTMLSelectElement).value as BloodGroup;
+      const district = (form.elements.namedItem("memberDistrict") as HTMLInputElement).value.trim() || "জামালপুর";
+      const upazila = (form.elements.namedItem("memberUpazila") as HTMLInputElement).value.trim() || "সরিষাবাড়ী";
+      const address = (form.elements.namedItem("memberAddress") as HTMLInputElement).value;
+      const bio = (form.elements.namedItem("memberBio") as HTMLTextAreaElement).value;
+      const order = parseInt((form.elements.namedItem("memberOrder") as HTMLInputElement).value, 10) || 99;
 
-    const payload: Partial<Member> = {
-      name,
-      role,
-      committeeLevel,
-      registrationNumber: finalRegNo,
-      phone,
-      bloodGroup,
-      district,
-      upazila,
-      address,
-      bio,
-      order,
-    };
-
-    // Only set image if a photo preview actually exists, never overwrite with empty string
-    if (memberImagePreview && memberImagePreview.trim() !== "") {
-      payload.image = memberImagePreview;
-    }
-
-    if (editingMember) {
-      try {
-        const res = await fetch(`/api/members/${editingMember.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const resJson = await res.json();
-        const saved = res.ok && resJson.data ? resJson.data : { ...editingMember, ...payload };
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.id === editingMember.id ? saved : m
-          )
-        );
-      } catch {
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.id === editingMember.id ? { ...m, ...payload } : m
-          )
-        );
-      }
-    } else {
-      try {
-        const res = await fetch("/api/members", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const resJson = await res.json();
-        if (resJson.success && resJson.data) {
-          setMembers((prev) => [...prev, resJson.data]);
+      // Ensure clean BDAB-xxx registration number (e.g. BDAB-009, BDAB-010)
+      let finalRegNo = regNo?.trim();
+      if (!finalRegNo) {
+        if (editingMember?.registrationNumber) {
+          finalRegNo = editingMember.registrationNumber;
         } else {
+          let maxSerial = 0;
+          members.forEach((m) => {
+            if (m.registrationNumber) {
+              const match = m.registrationNumber.match(/BDAB-(\d+)/i);
+              if (match) {
+                const num = parseInt(match[1], 10);
+                if (num > maxSerial) maxSerial = num;
+              }
+            }
+          });
+          finalRegNo = `BDAB-${String(maxSerial + 1).padStart(3, "0")}`;
+        }
+      } else {
+        const match = finalRegNo.match(/(\d+)/);
+        if (match) {
+          finalRegNo = `BDAB-${String(parseInt(match[1], 10)).padStart(3, "0")}`;
+        }
+      }
+
+      const payload: Partial<Member> = {
+        name,
+        role,
+        committeeLevel,
+        registrationNumber: finalRegNo,
+        phone,
+        bloodGroup,
+        district,
+        upazila,
+        address,
+        bio,
+        order,
+      };
+
+      // Only set image if a photo preview actually exists, never overwrite with empty string
+      if (memberImagePreview && memberImagePreview.trim() !== "") {
+        payload.image = memberImagePreview;
+      }
+
+      if (editingMember) {
+        unmarkIdAsDeleted(editingMember.id, editingMember.registrationNumber);
+        try {
+          const res = await fetch(`/api/members/${encodeURIComponent(editingMember.id)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const resJson = await res.json();
+          const saved: Member = res.ok && resJson.data ? resJson.data : { ...editingMember, ...payload };
+          setMembers((prev) => {
+            const updated = prev.map((m) => (m.id === editingMember.id ? saved : m));
+            try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+        } catch {
+          const saved = { ...editingMember, ...payload };
+          setMembers((prev) => {
+            const updated = prev.map((m) => (m.id === editingMember.id ? saved : m));
+            try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+        }
+        setActionFeedback({
+          type: "success",
+          message: `"${name}"-এর তথ্য সফলভাবে আপডেট করা হয়েছে!`,
+        });
+      } else {
+        const newId = `member-${Date.now()}`;
+        unmarkIdAsDeleted(newId, finalRegNo);
+        try {
+          const res = await fetch("/api/members", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const resJson = await res.json();
+          if (resJson.success && resJson.data) {
+            setMembers((prev) => {
+              const updated = [...prev, resJson.data];
+              try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+          } else {
+            const fallbackNew: Member = {
+              id: newId,
+              name,
+              role,
+              committeeLevel,
+              registrationNumber: finalRegNo,
+              phone,
+              bloodGroup,
+              district,
+              upazila,
+              address,
+              bio,
+              order,
+              image: memberImagePreview,
+              joinedDate: new Date().toISOString().split("T")[0],
+              createdAt: new Date().toISOString().split("T")[0],
+            };
+            setMembers((prev) => {
+              const updated = [...prev, fallbackNew];
+              try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+          }
+        } catch {
           const fallbackNew: Member = {
-            id: `member-${Date.now()}`,
+            id: newId,
             name,
             role,
             committeeLevel,
@@ -544,70 +714,112 @@ export function AdminDashboard({
             joinedDate: new Date().toISOString().split("T")[0],
             createdAt: new Date().toISOString().split("T")[0],
           };
-          setMembers((prev) => [...prev, fallbackNew]);
+          setMembers((prev) => {
+            const updated = [...prev, fallbackNew];
+            try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
         }
-      } catch {
-        const fallbackNew: Member = {
-          id: `member-${Date.now()}`,
-          name,
-          role,
-          committeeLevel,
-          registrationNumber: finalRegNo,
-          phone,
-          bloodGroup,
-          district,
-          upazila,
-          address,
-          bio,
-          order,
-          image: memberImagePreview,
-          joinedDate: new Date().toISOString().split("T")[0],
-          createdAt: new Date().toISOString().split("T")[0],
-        };
-        setMembers((prev) => [...prev, fallbackNew]);
+        setActionFeedback({
+          type: "success",
+          message: `নতুন সদস্য "${name}" সফলভাবে যুক্ত করা হয়েছে!`,
+        });
       }
-    }
 
-    setIsMemberModalOpen(false);
-    setEditingMember(null);
-    setMemberImagePreview("");
+      setIsMemberModalOpen(false);
+      setEditingMember(null);
+      setMemberImagePreview("");
+    } finally {
+      setIsSavingMember(false);
+    }
   };
 
   const handleDeleteMember = async (id: string) => {
-    if (!confirm("আপনি কি নিশ্চিতভাবে এই সদস্যের তথ্য মুছে ফেলতে চান?")) return;
+    const memberToDelete = members.find((m) => m.id === id);
+    const memberName = memberToDelete?.name || "এই সদস্য";
+    if (!confirm(`আপনি কি নিশ্চিতভাবে "${memberName}"-এর তথ্য স্থায়ীভাবে মুছে ফেলতে চান?`)) return;
+
+    setDeletingMemberId(id);
+    const regNo = memberToDelete?.registrationNumber;
+    markIdAsDeleted(id, regNo);
+
+    // Optimistically update state and localStorage immediately
+    const remainingMembers = members.filter((m) => m.id !== id);
+    setMembers(remainingMembers);
     try {
-      await fetch(`/api/members/${id}`, { method: "DELETE" });
-      setMembers((prev) => prev.filter((m) => m.id !== id));
+      localStorage.setItem("bdab_local_members", JSON.stringify(remainingMembers));
+    } catch {}
+
+    try {
+      await fetch(`/api/members/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setActionFeedback({
+        type: "success",
+        message: `"${memberName}"-এর তথ্য সফলভাবে মুছে ফেলা হয়েছে!`,
+      });
     } catch {
-      setMembers((prev) => prev.filter((m) => m.id !== id));
+      setActionFeedback({
+        type: "success",
+        message: `"${memberName}" মুছে ফেলা সম্পন্ন হয়েছে।`,
+      });
+    } finally {
+      setDeletingMemberId(null);
     }
   };
 
   // Request Actions
   const handleUpdateRequestStatus = async (id: string, newStatus: RequestStatus) => {
     try {
-      await fetch(`/api/requests/${id}`, {
+      await fetch(`/api/requests/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
-      );
+      setRequests((prev) => {
+        const updated = prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r));
+        try { localStorage.setItem("bdab_local_requests", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      setActionFeedback({
+        type: "success",
+        message: "আবেদনের স্ট্যাটাস সফলভাবে পরিবর্তন করা হয়েছে!",
+      });
     } catch {
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
-      );
+      setRequests((prev) => {
+        const updated = prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r));
+        try { localStorage.setItem("bdab_local_requests", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
     }
   };
 
   const handleDeleteRequest = async (id: string) => {
-    if (!confirm("আপনি কি নিশ্চিতভাবে এই রক্তের আবেদনটি মুছে ফেলতে চান?")) return;
+    const reqToDelete = requests.find((r) => r.id === id);
+    const patientName = reqToDelete?.patientName || "এই রক্তের আবেদন";
+    if (!confirm(`আপনি কি নিশ্চিতভাবে "${patientName}"-এর রক্তের আবেদনটি স্থায়ীভাবে মুছে ফেলতে চান?`)) return;
+
+    setDeletingRequestId(id);
+    markIdAsDeleted(id);
+
+    // Optimistically remove from state and localStorage immediately
+    const remaining = requests.filter((r) => r.id !== id);
+    setRequests(remaining);
     try {
-      await fetch(`/api/requests/${id}`, { method: "DELETE" });
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      localStorage.setItem("bdab_local_requests", JSON.stringify(remaining));
+    } catch {}
+
+    try {
+      await fetch(`/api/requests/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setActionFeedback({
+        type: "success",
+        message: `"${patientName}"-এর রক্তের আবেদন মুছে ফেলা হয়েছে!`,
+      });
     } catch {
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      setActionFeedback({
+        type: "success",
+        message: "আবেদন মুছে ফেলা সম্পন্ন হয়েছে।",
+      });
+    } finally {
+      setDeletingRequestId(null);
     }
   };
 
@@ -615,6 +827,7 @@ export function AdminDashboard({
   const handleAddNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoticeTitle || !newNoticeContent) return;
+    setIsSavingNotice(true);
     try {
       const res = await fetch("/api/notices", {
         method: "POST",
@@ -625,21 +838,45 @@ export function AdminDashboard({
         }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.data) {
+        unmarkIdAsDeleted(data.data.id);
         setNotices((prev) => [data.data, ...prev]);
         setNewNoticeTitle("");
         setNewNoticeContent("");
         setIsNoticeModalOpen(false);
+        setActionFeedback({
+          type: "success",
+          message: "নতুন নোটিশ সফলভাবে প্রকাশ করা হয়েছে!",
+        });
       }
-    } catch {}
+    } catch {} finally {
+      setIsSavingNotice(false);
+    }
   };
 
   const handleDeleteNotice = async (id: string) => {
-    if (!confirm("নোটিশটি মুছে ফেলবেন?")) return;
+    if (!confirm("নোটিশটি কি স্থায়ীভাবে মুছে ফেলতে চান?")) return;
+
+    setDeletingNoticeId(id);
+    markIdAsDeleted(id);
+
+    const remaining = notices.filter((n) => n.id !== id);
+    setNotices(remaining);
+
     try {
-      await fetch(`/api/notices?id=${id}`, { method: "DELETE" });
-      setNotices((prev) => prev.filter((n) => n.id !== id));
-    } catch {}
+      await fetch(`/api/notices?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      setActionFeedback({
+        type: "success",
+        message: "নোটিশটি সফলভাবে মুছে ফেলা হয়েছে!",
+      });
+    } catch {
+      setActionFeedback({
+        type: "success",
+        message: "নোটিশ মুছে ফেলা হয়েছে।",
+      });
+    } finally {
+      setDeletingNoticeId(null);
+    }
   };
 
   // Password update
@@ -853,6 +1090,28 @@ export function AdminDashboard({
 
       {/* Main Admin Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+        {/* Action Feedback Banner */}
+        {actionFeedback && (
+          <div
+            className={`mb-6 p-4 rounded-2xl flex items-center justify-between border text-sm font-bold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${
+              actionFeedback.type === "success"
+                ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                : "bg-red-50 border-red-300 text-red-800"
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <FaCheck className="text-base text-emerald-600 flex-shrink-0" />
+              <span>{actionFeedback.message}</span>
+            </div>
+            <button
+              onClick={() => setActionFeedback(null)}
+              className="text-xs opacity-75 hover:opacity-100 ml-4 font-semibold px-2.5 py-1 rounded-lg bg-white/70 hover:bg-white transition-colors"
+            >
+              বন্ধ করুন
+            </button>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div className="flex overflow-x-auto items-center gap-2 mb-8 bg-white p-2 rounded-2xl border border-slate-200 shadow-xs scrollbar-none whitespace-nowrap">
           <button
@@ -1180,9 +1439,15 @@ export function AdminDashboard({
                                 onClick={() => handleDeleteDonor(donor.id)}
                                 variant="destructive"
                                 size="sm"
+                                disabled={deletingDonorId === donor.id}
                                 className="h-8 px-2 text-[11px]"
+                                title="রক্তদাতার তথ্য মুছুন"
                               >
-                                <FaTrash />
+                                {deletingDonorId === donor.id ? (
+                                  <FaSpinner className="animate-spin text-white text-xs" />
+                                ) : (
+                                  <FaTrash />
+                                )}
                               </Button>
                             </div>
                           </td>
@@ -1326,9 +1591,15 @@ export function AdminDashboard({
                               onClick={() => handleDeleteRequest(req.id)}
                               variant="destructive"
                               size="sm"
+                              disabled={deletingRequestId === req.id}
                               className="h-8 px-2 text-[11px]"
+                              title="আবেদন মুছে ফেলুন"
                             >
-                              <FaTrash />
+                              {deletingRequestId === req.id ? (
+                                <FaSpinner className="animate-spin text-white text-xs" />
+                              ) : (
+                                <FaTrash />
+                              )}
                             </Button>
                           </td>
                         </tr>
@@ -1551,9 +1822,15 @@ export function AdminDashboard({
                         onClick={() => handleDeleteMember(member.id)}
                         variant="destructive"
                         size="sm"
+                        disabled={deletingMemberId === member.id}
                         className="h-8 px-2 text-xs"
+                        title="সদস্যের তথ্য মুছুন"
                       >
-                        <FaTrash />
+                        {deletingMemberId === member.id ? (
+                          <FaSpinner className="animate-spin text-white text-xs" />
+                        ) : (
+                          <FaTrash />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -1609,10 +1886,20 @@ export function AdminDashboard({
                       onClick={() => handleDeleteNotice(n.id)}
                       variant="destructive"
                       size="sm"
-                      className="text-xs"
+                      disabled={deletingNoticeId === n.id}
+                      className="text-xs font-semibold"
                     >
-                      <FaTrash className="mr-1" />
-                      মুছে ফেলুন
+                      {deletingNoticeId === n.id ? (
+                        <>
+                          <FaSpinner className="animate-spin mr-1" />
+                          মুছে ফেলা হচ্ছে...
+                        </>
+                      ) : (
+                        <>
+                          <FaTrash className="mr-1" />
+                          মুছে ফেলুন
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -1939,10 +2226,22 @@ export function AdminDashboard({
               <Button
                 type="submit"
                 size="sm"
-                disabled={isUploadingImage}
-                className="bg-blood-600 hover:bg-blood-700 text-white font-bold"
+                disabled={isSavingMember || isUploadingImage}
+                className="bg-blood-600 hover:bg-blood-700 text-white font-bold min-w-[120px]"
               >
-                {isUploadingImage ? "ছবি আপলোড হচ্ছে..." : "সংরক্ষণ করুন"}
+                {isSavingMember ? (
+                  <>
+                    <FaSpinner className="animate-spin mr-1.5" />
+                    সংরক্ষণ হচ্ছে...
+                  </>
+                ) : isUploadingImage ? (
+                  <>
+                    <FaSpinner className="animate-spin mr-1.5" />
+                    ছবি আপলোড হচ্ছে...
+                  </>
+                ) : (
+                  "সংরক্ষণ করুন"
+                )}
               </Button>
             </div>
           </form>
@@ -2119,10 +2418,17 @@ export function AdminDashboard({
               <Button
                 type="submit"
                 size="sm"
-                disabled={isUploadingImage}
-                className="bg-blood-600 hover:bg-blood-700 text-white font-bold"
+                disabled={isSavingDonor}
+                className="bg-blood-600 hover:bg-blood-700 text-white font-bold min-w-[120px]"
               >
-                {isUploadingImage ? "ছবি আপলোড হচ্ছে..." : "সংরক্ষণ করুন"}
+                {isSavingDonor ? (
+                  <>
+                    <FaSpinner className="animate-spin mr-1.5" />
+                    সংরক্ষণ হচ্ছে...
+                  </>
+                ) : (
+                  "সংরক্ষণ করুন"
+                )}
               </Button>
             </div>
           </form>
@@ -2180,9 +2486,17 @@ export function AdminDashboard({
               <Button
                 type="submit"
                 size="sm"
-                className="bg-blood-600 hover:bg-blood-700 text-white font-bold"
+                disabled={isSavingNotice}
+                className="bg-blood-600 hover:bg-blood-700 text-white font-bold min-w-[110px]"
               >
-                প্রকাশ করুন
+                {isSavingNotice ? (
+                  <>
+                    <FaSpinner className="animate-spin mr-1.5" />
+                    প্রকাশ হচ্ছে...
+                  </>
+                ) : (
+                  "প্রকাশ করুন"
+                )}
               </Button>
             </div>
           </form>

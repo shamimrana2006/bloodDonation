@@ -123,3 +123,11 @@ export const DonorModel = mongoose.models.Donor || mongoose.model('Donor', Donor
 export const RequestModel = mongoose.models.BloodRequest || mongoose.model('BloodRequest', RequestSchema);
 export const MemberModel = mongoose.models.Member || mongoose.model('Member', MemberSchema);
 export const NoticeModel = mongoose.models.Notice || mongoose.model('Notice', NoticeSchema);
+
+const DeletedIdSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  entityType: { type: String, default: 'member' },
+  deletedAt: { type: Date, default: Date.now },
+}, { timestamps: true });
+
+export const DeletedIdModel = mongoose.models.DeletedId || mongoose.model('DeletedId', DeletedIdSchema);

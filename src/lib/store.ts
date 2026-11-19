@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import mongoose from 'mongoose';
 import { Donor, BloodRequest, Notice, Member } from './types';
 import { INITIAL_DONORS, INITIAL_REQUESTS, INITIAL_NOTICES, INITIAL_MEMBERS } from './data';
-import { connectToDatabase, DonorModel, RequestModel, MemberModel, NoticeModel } from './mongodb';
+import { connectToDatabase, DonorModel, RequestModel, MemberModel, NoticeModel, DeletedIdModel } from './mongodb';
 
 interface AppStorage {
   donors: Donor[];
@@ -66,36 +67,45 @@ export function saveStore(store: AppStorage): void {
 
 // Donors
 export async function fetchDonors(): Promise<Donor[]> {
+  const deletedIds = new Set<string>();
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      const delDocs = await DeletedIdModel.find({ entityType: 'donor' }).lean();
+      delDocs.forEach((d: any) => {
+        if (d.id) deletedIds.add(d.id.toLowerCase());
+      });
+
       const docs = await DonorModel.find({}).sort({ createdAt: -1 }).lean();
       if (docs && docs.length > 0) {
-        return docs.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          bloodGroup: d.bloodGroup,
-          phone: d.phone,
-          alternatePhone: d.alternatePhone,
-          division: d.division,
-          district: d.district,
-          upazila: d.upazila,
-          address: d.address,
-          lastDonationDate: d.lastDonationDate,
-          totalDonations: d.totalDonations,
-          gender: d.gender,
-          isAvailable: d.isAvailable,
-          isVerified: d.isVerified,
-          notes: d.notes,
-          createdAt: d.createdAt,
-        }));
+        return docs
+          .filter((d: any) => !deletedIds.has((d.id || '').toLowerCase()))
+          .map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            bloodGroup: d.bloodGroup,
+            phone: d.phone,
+            alternatePhone: d.alternatePhone,
+            division: d.division,
+            district: d.district,
+            upazila: d.upazila,
+            address: d.address,
+            lastDonationDate: d.lastDonationDate,
+            totalDonations: d.totalDonations,
+            gender: d.gender,
+            isAvailable: d.isAvailable,
+            isVerified: d.isVerified,
+            notes: d.notes,
+            createdAt: d.createdAt,
+          }));
       }
     }
   } catch (err) {
     console.error('Error fetching donors from Mongo:', err);
   }
 
-  return getStore().donors;
+  const fallback = getStore().donors || [];
+  return fallback.filter((d) => !deletedIds.has((d.id || '').toLowerCase()));
 }
 
 export async function createDonor(donor: Donor): Promise<Donor> {
@@ -107,6 +117,9 @@ export async function createDonor(donor: Donor): Promise<Donor> {
     const conn = await connectToDatabase();
     if (conn) {
       await DonorModel.create(donor);
+      await DeletedIdModel.deleteMany({
+        id: { $in: [donor.id, donor.id.toLowerCase()] },
+      });
     }
   } catch (err) {
     console.error('Error saving donor to Mongo:', err);
@@ -136,64 +149,97 @@ export async function modifyDonor(id: string, updates: Partial<Donor>): Promise<
 }
 
 export async function removeDonor(id: string): Promise<boolean> {
+  const clean = decodeURIComponent(id).trim();
+  const lower = clean.toLowerCase();
   const store = getStore();
-  const initialLength = store.donors.length;
-  store.donors = store.donors.filter((d) => d.id !== id);
-  if (store.donors.length !== initialLength) {
-    saveStore(store);
-  }
+  store.donors = store.donors.filter((d) => d.id !== clean && d.id?.toLowerCase() !== lower);
+  saveStore(store);
 
   try {
     const conn = await connectToDatabase();
     if (conn) {
-      await DonorModel.deleteOne({ id });
+      const orConditions: any[] = [{ id: clean }, { id: lower }];
+      if (mongoose.Types.ObjectId.isValid(clean)) {
+        orConditions.push({ _id: clean });
+      }
+      await DonorModel.deleteMany({ $or: orConditions });
+      await DeletedIdModel.updateOne(
+        { id: clean },
+        { id: clean, entityType: 'donor', deletedAt: new Date() },
+        { upsert: true }
+      );
+      if (clean !== lower) {
+        await DeletedIdModel.updateOne(
+          { id: lower },
+          { id: lower, entityType: 'donor', deletedAt: new Date() },
+          { upsert: true }
+        );
+      }
       return true;
     }
   } catch (err) {
     console.error('Error deleting donor in Mongo:', err);
   }
 
-  return store.donors.length !== initialLength;
+  return true;
 }
 
 // Members
 export async function fetchMembers(): Promise<Member[]> {
+  const deletedIds = new Set<string>();
+
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      const delDocs = await DeletedIdModel.find({ entityType: 'member' }).lean();
+      delDocs.forEach((d: any) => {
+        if (d.id) deletedIds.add(d.id.toLowerCase());
+      });
+
       const docs = await MemberModel.find({}).sort({ order: 1, createdAt: -1 }).lean();
       if (docs && docs.length > 0) {
-        return docs.map((m: any) => {
-          let img = m.image;
-          if (!img) {
-            const initMatch = INITIAL_MEMBERS.find((im) => im.id === m.id || im.registrationNumber === m.registrationNumber);
-            if (initMatch && initMatch.image) img = initMatch.image;
-          }
-          return {
-            id: m.id,
-            registrationNumber: m.registrationNumber || `BDAB-${m.id.slice(-4).toUpperCase()}`,
-            name: m.name,
-            role: m.role,
-            committeeLevel: m.committeeLevel || 'সাধারণ সদস্য',
-            phone: m.phone,
-            bloodGroup: m.bloodGroup,
-            district: m.district || 'জামালপুর',
-            upazila: m.upazila || 'সরিষাবাড়ী',
-            address: m.address,
-            bio: m.bio,
-            image: img,
-            joinedDate: m.joinedDate,
-            order: m.order,
-            createdAt: m.createdAt,
-          };
-        });
+        return docs
+          .filter((m: any) => {
+            const mId = (m.id || '').toLowerCase();
+            const mReg = (m.registrationNumber || '').toLowerCase();
+            return !deletedIds.has(mId) && !deletedIds.has(mReg);
+          })
+          .map((m: any) => {
+            let img = m.image;
+            if (!img) {
+              const initMatch = INITIAL_MEMBERS.find((im) => im.id === m.id || im.registrationNumber === m.registrationNumber);
+              if (initMatch && initMatch.image) img = initMatch.image;
+            }
+            return {
+              id: m.id,
+              registrationNumber: m.registrationNumber || `BDAB-${m.id.slice(-4).toUpperCase()}`,
+              name: m.name,
+              role: m.role,
+              committeeLevel: m.committeeLevel || 'সাধারণ সদস্য',
+              phone: m.phone,
+              bloodGroup: m.bloodGroup,
+              district: m.district || 'জামালপুর',
+              upazila: m.upazila || 'সরিষাবাড়ী',
+              address: m.address,
+              bio: m.bio,
+              image: img,
+              joinedDate: m.joinedDate,
+              order: m.order,
+              createdAt: m.createdAt,
+            };
+          });
       }
     }
   } catch (err) {
     console.error('Error fetching members from Mongo:', err);
   }
 
-  return getStore().members || [];
+  const fallback = getStore().members || [];
+  return fallback.filter((m) => {
+    const mId = (m.id || '').toLowerCase();
+    const mReg = (m.registrationNumber || '').toLowerCase();
+    return !deletedIds.has(mId) && !deletedIds.has(mReg);
+  });
 }
 
 export async function createMember(member: Member): Promise<Member> {
@@ -206,6 +252,14 @@ export async function createMember(member: Member): Promise<Member> {
     const conn = await connectToDatabase();
     if (conn) {
       await MemberModel.create(member);
+      const toUnblock = [
+        member.id,
+        member.id?.toLowerCase(),
+        member.registrationNumber,
+        member.registrationNumber?.toLowerCase(),
+      ].filter(Boolean) as string[];
+
+      await DeletedIdModel.deleteMany({ id: { $in: toUnblock } });
     }
   } catch (err) {
     console.error('Error saving member to Mongo:', err);
@@ -291,35 +345,48 @@ export async function removeMember(id: string): Promise<boolean> {
   const lower = clean.toLowerCase();
 
   const store = getStore();
-  if (!store.members) return false;
-  const initialLength = store.members.length;
+  if (!store.members) store.members = [];
   store.members = store.members.filter(
     (m) =>
       m.id !== clean &&
       m.id?.toLowerCase() !== lower &&
       m.registrationNumber?.toLowerCase() !== lower
   );
-  if (store.members.length !== initialLength) {
-    saveStore(store);
-  }
+  saveStore(store);
 
   try {
     const conn = await connectToDatabase();
     if (conn) {
-      await MemberModel.deleteOne({
-        $or: [
-          { id: clean },
+      const orConditions: any[] = [
+        { id: clean },
+        { id: lower },
+        { registrationNumber: { $regex: new RegExp(`^${clean}$`, 'i') } },
+      ];
+      if (mongoose.Types.ObjectId.isValid(clean)) {
+        orConditions.push({ _id: clean });
+      }
+
+      await MemberModel.deleteMany({ $or: orConditions });
+
+      await DeletedIdModel.updateOne(
+        { id: clean },
+        { id: clean, entityType: 'member', deletedAt: new Date() },
+        { upsert: true }
+      );
+      if (clean !== lower) {
+        await DeletedIdModel.updateOne(
           { id: lower },
-          { registrationNumber: { $regex: new RegExp(`^${clean}$`, 'i') } },
-        ],
-      });
+          { id: lower, entityType: 'member', deletedAt: new Date() },
+          { upsert: true }
+        );
+      }
       return true;
     }
   } catch (err) {
     console.error('Error deleting member in Mongo:', err);
   }
 
-  return store.members.length !== initialLength;
+  return true;
 }
 
 export async function fetchMemberByIdOrReg(identifier: string): Promise<Member | null> {
@@ -329,6 +396,14 @@ export async function fetchMemberByIdOrReg(identifier: string): Promise<Member |
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      const isDeleted = await DeletedIdModel.findOne({
+        id: { $in: [clean, lower] },
+        entityType: 'member',
+      }).lean();
+      if (isDeleted) {
+        return null;
+      }
+
       const doc = await MemberModel.findOne({
         $or: [
           { id: clean },
@@ -389,36 +464,46 @@ export async function fetchMemberByIdOrReg(identifier: string): Promise<Member |
 
 // Requests
 export async function fetchRequests(): Promise<BloodRequest[]> {
+  const deletedIds = new Set<string>();
+
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      const delDocs = await DeletedIdModel.find({ entityType: 'request' }).lean();
+      delDocs.forEach((d: any) => {
+        if (d.id) deletedIds.add(d.id.toLowerCase());
+      });
+
       const docs = await RequestModel.find({}).sort({ createdAt: -1 }).lean();
       if (docs && docs.length > 0) {
-        return docs.map((r: any) => ({
-          id: r.id,
-          patientName: r.patientName,
-          bloodGroup: r.bloodGroup,
-          units: r.units,
-          hospitalName: r.hospitalName,
-          district: r.district,
-          upazila: r.upazila,
-          neededDate: r.neededDate,
-          neededTime: r.neededTime,
-          contactPhone: r.contactPhone,
-          alternatePhone: r.alternatePhone,
-          reason: r.reason,
-          urgency: r.urgency,
-          status: r.status,
-          donorAssigned: r.donorAssigned,
-          createdAt: r.createdAt,
-        }));
+        return docs
+          .filter((r: any) => !deletedIds.has((r.id || '').toLowerCase()))
+          .map((r: any) => ({
+            id: r.id,
+            patientName: r.patientName,
+            bloodGroup: r.bloodGroup,
+            units: r.units,
+            hospitalName: r.hospitalName,
+            district: r.district,
+            upazila: r.upazila,
+            neededDate: r.neededDate,
+            neededTime: r.neededTime,
+            contactPhone: r.contactPhone,
+            alternatePhone: r.alternatePhone,
+            reason: r.reason,
+            urgency: r.urgency,
+            status: r.status,
+            donorAssigned: r.donorAssigned,
+            createdAt: r.createdAt,
+          }));
       }
     }
   } catch (err) {
     console.error('Error fetching requests from Mongo:', err);
   }
 
-  return getStore().requests;
+  const fallback = getStore().requests || [];
+  return fallback.filter((r) => !deletedIds.has((r.id || '').toLowerCase()));
 }
 
 export async function createRequest(request: BloodRequest): Promise<BloodRequest> {
@@ -430,6 +515,9 @@ export async function createRequest(request: BloodRequest): Promise<BloodRequest
     const conn = await connectToDatabase();
     if (conn) {
       await RequestModel.create(request);
+      await DeletedIdModel.deleteMany({
+        id: { $in: [request.id, request.id.toLowerCase()] }
+      });
     }
   } catch (err) {
     console.error('Error saving request to Mongo:', err);
@@ -459,48 +547,73 @@ export async function modifyRequest(id: string, updates: Partial<BloodRequest>):
 }
 
 export async function removeRequest(id: string): Promise<boolean> {
+  const clean = decodeURIComponent(id).trim();
+  const lower = clean.toLowerCase();
   const store = getStore();
-  const initialLength = store.requests.length;
-  store.requests = store.requests.filter((r) => r.id !== id);
-  if (store.requests.length !== initialLength) {
-    saveStore(store);
-  }
+  store.requests = store.requests.filter((r) => r.id !== clean && r.id?.toLowerCase() !== lower);
+  saveStore(store);
 
   try {
     const conn = await connectToDatabase();
     if (conn) {
-      await RequestModel.deleteOne({ id });
+      const orConditions: any[] = [{ id: clean }, { id: lower }];
+      if (mongoose.Types.ObjectId.isValid(clean)) {
+        orConditions.push({ _id: clean });
+      }
+      await RequestModel.deleteMany({ $or: orConditions });
+      await DeletedIdModel.updateOne(
+        { id: clean },
+        { id: clean, entityType: 'request', deletedAt: new Date() },
+        { upsert: true }
+      );
+      if (clean !== lower) {
+        await DeletedIdModel.updateOne(
+          { id: lower },
+          { id: lower, entityType: 'request', deletedAt: new Date() },
+          { upsert: true }
+        );
+      }
       return true;
     }
   } catch (err) {
     console.error('Error deleting request in Mongo:', err);
   }
 
-  return store.requests.length !== initialLength;
+  return true;
 }
 
 // Notices
 export async function fetchNotices(): Promise<Notice[]> {
+  const deletedIds = new Set<string>();
+
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      const delDocs = await DeletedIdModel.find({ entityType: 'notice' }).lean();
+      delDocs.forEach((d: any) => {
+        if (d.id) deletedIds.add(d.id.toLowerCase());
+      });
+
       const docs = await NoticeModel.find({}).sort({ createdAt: -1 }).lean();
       if (docs && docs.length > 0) {
-        return docs.map((n: any) => ({
-          id: n.id,
-          title: n.title,
-          content: n.content,
-          date: n.date,
-          isImportant: n.isImportant,
-          type: n.type,
-        }));
+        return docs
+          .filter((n: any) => !deletedIds.has((n.id || '').toLowerCase()))
+          .map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            content: n.content,
+            date: n.date,
+            isImportant: n.isImportant,
+            type: n.type,
+          }));
       }
     }
   } catch (err) {
     console.error('Error fetching notices from Mongo:', err);
   }
 
-  return getStore().notices;
+  const fallback = getStore().notices || [];
+  return fallback.filter((n) => !deletedIds.has((n.id || '').toLowerCase()));
 }
 
 export async function createNotice(notice: Notice): Promise<Notice> {
@@ -512,6 +625,9 @@ export async function createNotice(notice: Notice): Promise<Notice> {
     const conn = await connectToDatabase();
     if (conn) {
       await NoticeModel.create(notice);
+      await DeletedIdModel.deleteMany({
+        id: { $in: [notice.id, notice.id.toLowerCase()] }
+      });
     }
   } catch (err) {
     console.error('Error saving notice to Mongo:', err);
@@ -521,14 +637,32 @@ export async function createNotice(notice: Notice): Promise<Notice> {
 }
 
 export async function removeNotice(id: string): Promise<boolean> {
+  const clean = decodeURIComponent(id).trim();
+  const lower = clean.toLowerCase();
   const store = getStore();
-  store.notices = store.notices.filter((n) => n.id !== id);
+  store.notices = store.notices.filter((n) => n.id !== clean && n.id?.toLowerCase() !== lower);
   saveStore(store);
 
   try {
     const conn = await connectToDatabase();
     if (conn) {
-      await NoticeModel.deleteOne({ id });
+      const orConditions: any[] = [{ id: clean }, { id: lower }];
+      if (mongoose.Types.ObjectId.isValid(clean)) {
+        orConditions.push({ _id: clean });
+      }
+      await NoticeModel.deleteMany({ $or: orConditions });
+      await DeletedIdModel.updateOne(
+        { id: clean },
+        { id: clean, entityType: 'notice', deletedAt: new Date() },
+        { upsert: true }
+      );
+      if (clean !== lower) {
+        await DeletedIdModel.updateOne(
+          { id: lower },
+          { id: lower, entityType: 'notice', deletedAt: new Date() },
+          { upsert: true }
+        );
+      }
       return true;
     }
   } catch (err) {

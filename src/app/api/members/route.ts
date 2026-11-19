@@ -56,10 +56,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate clean serial Registration Number in format: BDAB-001, BDAB-002, etc. (NO BDAB-C- or BDAB-U-)
+    // Fetch all existing members to ensure unique registration number
+    const allMembers = await fetchMembers();
+    const existingRegs = new Set(
+      allMembers
+        .map((m) => m.registrationNumber?.trim().toLowerCase())
+        .filter(Boolean) as string[]
+    );
+
+    // Generate or format Registration Number
     let regNum = body.registrationNumber?.trim();
     if (!regNum) {
-      const allMembers = await fetchMembers();
       let maxSerial = 0;
       for (const m of allMembers) {
         if (m.registrationNumber) {
@@ -70,12 +77,30 @@ export async function POST(request: Request) {
           }
         }
       }
-      const nextSerial = maxSerial + 1;
+      let nextSerial = maxSerial + 1;
       regNum = `BDAB-${String(nextSerial).padStart(3, '0')}`;
+      while (existingRegs.has(regNum.toLowerCase())) {
+        nextSerial++;
+        regNum = `BDAB-${String(nextSerial).padStart(3, '0')}`;
+      }
     } else {
       // If user typed pure digits (e.g. "9" or "009"), format cleanly as BDAB-009
       if (/^\d+$/.test(regNum)) {
         regNum = `BDAB-${String(parseInt(regNum, 10)).padStart(3, '0')}`;
+      }
+
+      // Check if registration number is already used by another member
+      if (existingRegs.has(regNum.toLowerCase())) {
+        const conflict = allMembers.find(
+          (m) => m.registrationNumber?.trim().toLowerCase() === regNum?.toLowerCase()
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            message: `এই রেজিস্ট্রেশন নম্বরটি (${regNum}) ইতিমধ্যে "${conflict?.name || 'অন্য সদস্য'}" এর জন্য ব্যবহৃত হচ্ছে। প্রতিটি সদস্যের আইডি অবশ্যই আলাদা ও ইউনিক হতে হবে।`,
+          },
+          { status: 400 }
+        );
       }
     }
 

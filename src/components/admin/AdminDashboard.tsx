@@ -601,6 +601,14 @@ export function AdminDashboard({
       const bio = (form.elements.namedItem("memberBio") as HTMLTextAreaElement).value;
       const order = parseInt((form.elements.namedItem("memberOrder") as HTMLInputElement).value, 10) || 99;
 
+      // Set of existing registration numbers (excluding the current member if editing)
+      const existingRegs = new Set(
+        members
+          .filter((m) => !editingMember || m.id !== editingMember.id)
+          .map((m) => m.registrationNumber?.trim().toLowerCase())
+          .filter(Boolean) as string[]
+      );
+
       // Handle Registration Number (controlled state / input value)
       let finalRegNo = regNo;
       if (!finalRegNo) {
@@ -617,14 +625,33 @@ export function AdminDashboard({
               }
             }
           });
-          finalRegNo = `BDAB-${String(maxSerial + 1).padStart(3, "0")}`;
+          let nextSerial = maxSerial + 1;
+          finalRegNo = `BDAB-${String(nextSerial).padStart(3, "0")}`;
+          while (existingRegs.has(finalRegNo.toLowerCase())) {
+            nextSerial++;
+            finalRegNo = `BDAB-${String(nextSerial).padStart(3, "0")}`;
+          }
         }
       } else {
         // If user typed pure digits (e.g. "5" or "005"), format as BDAB-005 for convenience.
-        // Otherwise keep whatever registration number the admin entered!
         if (/^\d+$/.test(finalRegNo)) {
           finalRegNo = `BDAB-${String(parseInt(finalRegNo, 10)).padStart(3, "0")}`;
         }
+      }
+
+      // Enforce unique registration number before submit
+      if (existingRegs.has(finalRegNo.toLowerCase())) {
+        const conflict = members.find(
+          (m) =>
+            (!editingMember || m.id !== editingMember.id) &&
+            m.registrationNumber?.trim().toLowerCase() === finalRegNo.toLowerCase()
+        );
+        setActionFeedback({
+          type: "error",
+          message: `এই রেজিস্ট্রেশন নম্বরটি (${finalRegNo}) ইতিমধ্যে "${conflict?.name || 'অন্য সদস্য'}" এর জন্য ব্যবহৃত হচ্ছে। প্রতিটি সদস্যের আইডি অবশ্যই আলাদা ও ইউনিক হতে হবে।`,
+        });
+        setIsSavingMember(false);
+        return;
       }
 
       const payload: Partial<Member> = {
@@ -658,19 +685,27 @@ export function AdminDashboard({
             body: JSON.stringify(payload),
           });
           const resJson = await res.json();
-          const saved: Member = res.ok && resJson.data ? resJson.data : { ...editingMember, ...payload };
+          if (!res.ok || !resJson.success) {
+            setActionFeedback({
+              type: "error",
+              message: resJson.message || "সদস্যের তথ্য আপডেট করা যায়নি।",
+            });
+            setIsSavingMember(false);
+            return;
+          }
+          const saved: Member = resJson.data || { ...editingMember, ...payload };
           setMembers((prev) => {
             const updated = prev.map((m) => (m.id === editingMember.id ? saved : m));
             try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
             return updated;
           });
-        } catch {
-          const saved = { ...editingMember, ...payload };
-          setMembers((prev) => {
-            const updated = prev.map((m) => (m.id === editingMember.id ? saved : m));
-            try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
-            return updated;
+        } catch (err: any) {
+          setActionFeedback({
+            type: "error",
+            message: err?.message || "সার্ভারে আপডেট করতে সমস্যা হয়েছে।",
           });
+          setIsSavingMember(false);
+          return;
         }
         setActionFeedback({
           type: "success",
@@ -686,59 +721,28 @@ export function AdminDashboard({
             body: JSON.stringify(payload),
           });
           const resJson = await res.json();
-          if (resJson.success && resJson.data) {
+          if (!res.ok || !resJson.success) {
+            setActionFeedback({
+              type: "error",
+              message: resJson.message || "নতুন সদস্য যুক্ত করা যায়নি।",
+            });
+            setIsSavingMember(false);
+            return;
+          }
+          if (resJson.data) {
             setMembers((prev) => {
               const updated = [...prev, resJson.data];
               try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
               return updated;
             });
-          } else {
-            const fallbackNew: Member = {
-              id: newId,
-              name,
-              role,
-              committeeLevel,
-              registrationNumber: finalRegNo,
-              phone,
-              bloodGroup,
-              district,
-              upazila,
-              address,
-              bio,
-              order,
-              image: memberImagePreview,
-              joinedDate: new Date().toISOString().split("T")[0],
-              createdAt: new Date().toISOString().split("T")[0],
-            };
-            setMembers((prev) => {
-              const updated = [...prev, fallbackNew];
-              try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
-              return updated;
-            });
           }
-        } catch {
-          const fallbackNew: Member = {
-            id: newId,
-            name,
-            role,
-            committeeLevel,
-            registrationNumber: finalRegNo,
-            phone,
-            bloodGroup,
-            district,
-            upazila,
-            address,
-            bio,
-            order,
-            image: memberImagePreview,
-            joinedDate: new Date().toISOString().split("T")[0],
-            createdAt: new Date().toISOString().split("T")[0],
-          };
-          setMembers((prev) => {
-            const updated = [...prev, fallbackNew];
-            try { localStorage.setItem("bdab_local_members", JSON.stringify(updated)); } catch {}
-            return updated;
+        } catch (err: any) {
+          setActionFeedback({
+            type: "error",
+            message: err?.message || "সার্ভারে নতুন সদস্য যুক্ত করতে সমস্যা হয়েছে।",
           });
+          setIsSavingMember(false);
+          return;
         }
         setActionFeedback({
           type: "success",
@@ -981,6 +985,27 @@ export function AdminDashboard({
       return true;
     });
   }, [requests, requestStatusFilter]);
+
+  // Check if candidate registration number collides with an existing member
+  const normalizedCandidateRegNo = useMemo(() => {
+    const raw = memberRegNoInput.trim();
+    if (!raw) return "";
+    if (/^\d+$/.test(raw)) {
+      return `BDAB-${String(parseInt(raw, 10)).padStart(3, "0")}`;
+    }
+    return raw;
+  }, [memberRegNoInput]);
+
+  const duplicateMemberConflict = useMemo(() => {
+    if (!normalizedCandidateRegNo) return null;
+    const lower = normalizedCandidateRegNo.toLowerCase();
+    return members.find(
+      (m) =>
+        (!editingMember || m.id !== editingMember.id) &&
+        m.registrationNumber &&
+        m.registrationNumber.trim().toLowerCase() === lower
+    );
+  }, [normalizedCandidateRegNo, members, editingMember]);
 
   // If still checking authentication
   if (isCheckingAuth) {
@@ -2069,7 +2094,7 @@ export function AdminDashboard({
               {editingMember ? "সদস্যের তথ্য পরিবর্তন করুন" : "নতুন সদস্য যুক্ত করুন"}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              সদস্যের নাম, পদবী, যোগাযোগের নম্বর, রেজিস্ট্রেশন নম্বর ও ছবি সেভ করুন (ডাটাবেজে সংরক্ষিত)।
+              সদস্যের নাম, পদবী, যোগাযোগের নম্বর, ঠিকানা ও ছবি যুক্ত বা পরিবর্তন করুন।
             </DialogDescription>
           </DialogHeader>
 
@@ -2078,7 +2103,7 @@ export function AdminDashboard({
             onSubmit={handleSaveMember}
             className="space-y-3 pt-2 text-xs"
           >
-            {/* Photo Upload & Preview with Cloud Database Storage */}
+            {/* Photo Upload & Preview */}
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blood-600 bg-white flex items-center justify-center flex-shrink-0 relative">
@@ -2100,21 +2125,16 @@ export function AdminDashboard({
 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <label className="block text-xs font-bold text-slate-700">
-                        সদস্যের প্রোফাইল ছবি
-                      </label>
-                      <Badge className="bg-emerald-600 text-white text-[9px] px-1.5 py-0">
-                        ডাটাবেজে সংরক্ষিত
-                      </Badge>
-                    </div>
+                    <label className="block text-xs font-bold text-slate-700">
+                      সদস্যের ছবি
+                    </label>
                     {isUploadingImage ? (
                       <span className="text-[10px] font-bold text-amber-600 animate-pulse flex items-center gap-1">
                         <FaSpinner className="animate-spin text-[9px]" /> আপলোড হচ্ছে...
                       </span>
                     ) : memberImagePreview ? (
                       <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
-                        <FaCheck className="text-[9px]" /> ডাটাবেজে সেভ হতে প্রস্তুত
+                        <FaCheck className="text-[9px]" /> ছবি নির্বাচিত
                       </span>
                     ) : null}
                   </div>
@@ -2126,9 +2146,6 @@ export function AdminDashboard({
                     disabled={isUploadingImage}
                     className="text-xs text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blood-50 file:text-blood-700 hover:file:bg-blood-100 cursor-pointer disabled:opacity-50"
                   />
-                  <p className="text-[10px] text-slate-500">
-                    ✅ প্রতিটি সদস্যের ছবি সরাসরি আমাদের ক্লাউড ডাটাবেজে (MongoDB) স্থায়ীভাবে সংরক্ষিত থাকে।
-                  </p>
                   {uploadError && (
                     <p className="text-[10px] text-red-600 font-semibold">{uploadError}</p>
                   )}
@@ -2151,11 +2168,22 @@ export function AdminDashboard({
                   value={memberRegNoInput}
                   onChange={(e) => setMemberRegNoInput(e.target.value)}
                   placeholder="যেমন: BDAB-009 বা BDAB-785"
-                  className="h-9 font-mono font-bold text-blood-700 bg-blue-50/40 border-blue-300 focus:border-blue-500"
+                  className={`h-9 font-mono font-bold ${
+                    duplicateMemberConflict
+                      ? "border-red-500 bg-red-50 text-red-700 focus:border-red-600 focus:ring-red-200"
+                      : "text-blood-700 bg-blue-50/40 border-blue-300 focus:border-blue-500"
+                  }`}
                 />
-                <p className="text-[10px] text-slate-500 mt-1 leading-tight">
-                  💡 সদস্যের এই আইডিটি ইচ্ছামতো পরিবর্তন করতে পারবেন (যেমন: BDAB-001, BDAB-785 ইত্যাদি)। পরিবর্তন করতে চাইলে নতুন নম্বর লিখুন, আর ফাঁকা রাখলে স্বয়ংক্রিয়ভাবে পরবর্তী সিরিয়াল বসবে।
-                </p>
+                {duplicateMemberConflict ? (
+                  <p className="text-[11px] text-red-600 font-bold mt-1.5 flex items-center gap-1 bg-red-50 p-1.5 rounded-lg border border-red-200 leading-tight">
+                    <FaTriangleExclamation className="text-xs flex-shrink-0" />
+                    এই আইডিটি ({duplicateMemberConflict.registrationNumber}) ইতিমধ্যে সদস্য &quot;{duplicateMemberConflict.name}&quot;-এর জন্য ব্যবহৃত হচ্ছে। প্রতিটি সদস্যের আইডি অবশ্যই আলাদা হতে হবে।
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-slate-500 mt-1 leading-tight">
+                    💡 সদস্যের এই আইডিটি ইচ্ছামতো পরিবর্তন করতে পারবেন (যেমন: BDAB-001, BDAB-785 ইত্যাদি)। প্রতিটি সদস্যের আইডি আলাদা ও ইউনিক হতে হবে।
+                  </p>
+                )}
               </div>
 
               <div>
@@ -2311,8 +2339,8 @@ export function AdminDashboard({
               <Button
                 type="submit"
                 size="sm"
-                disabled={isSavingMember || isUploadingImage}
-                className="bg-blood-600 hover:bg-blood-700 text-white font-bold min-w-[120px]"
+                disabled={isSavingMember || isUploadingImage || !!duplicateMemberConflict}
+                className="bg-blood-600 hover:bg-blood-700 text-white font-bold min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSavingMember ? (
                   <>

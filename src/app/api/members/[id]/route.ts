@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { modifyMember, removeMember, fetchMemberByIdOrReg } from '@/lib/store';
+import { modifyMember, removeMember, fetchMemberByIdOrReg, fetchMembers } from '@/lib/store';
 import { uploadImageToCloudinary } from '@/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
@@ -50,6 +50,31 @@ export async function PUT(
     // Never erase existing image if body.image is empty or blank
     if (!body.image || (typeof body.image === 'string' && body.image.trim() === '')) {
       delete body.image;
+    }
+
+    // Check for duplicate registration number across other members
+    if (body.registrationNumber && typeof body.registrationNumber === 'string') {
+      let regNum = body.registrationNumber.trim();
+      if (/^\d+$/.test(regNum)) {
+        regNum = `BDAB-${String(parseInt(regNum, 10)).padStart(3, '0')}`;
+        body.registrationNumber = regNum;
+      }
+      const allMembers = await fetchMembers();
+      const conflict = allMembers.find(
+        (m) =>
+          m.id !== id &&
+          m.registrationNumber &&
+          m.registrationNumber.trim().toLowerCase() === regNum.toLowerCase()
+      );
+      if (conflict) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `এই রেজিস্ট্রেশন নম্বরটি (${regNum}) ইতিমধ্যে "${conflict.name}" সদস্যের জন্য ব্যবহৃত হচ্ছে। প্রতিটি সদস্যের আইডি অবশ্যই আলাদা ও ইউনিক হতে হবে।`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const updated = await modifyMember(id, body);

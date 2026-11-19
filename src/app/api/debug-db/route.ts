@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import { MONGODB_URI, MemberModel } from '@/lib/mongodb';
+import { MONGODB_URI, MemberModel, DonorModel } from '@/lib/mongodb';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,14 +14,21 @@ export async function GET() {
     const uri = MONGODB_URI;
     results.uriHost = uri.split('@')[1]?.split('/')[0];
     
-    // Attempt direct mongoose connect with raw error capture
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
-      bufferCommands: false,
-    });
+    // Connect with bufferCommands: true (default) and wait for readyState === 1
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 10000,
+        bufferCommands: true,
+      });
+    }
+
     results.connSuccess = true;
     results.readyStateAfter = mongoose.connection.readyState;
     results.memberCount = await MemberModel.countDocuments();
+    results.donorCount = await DonorModel.countDocuments();
+    
+    const members = await MemberModel.find({}).select('id registrationNumber name').lean();
+    results.members = members;
   } catch (err: any) {
     results.connSuccess = false;
     results.error = {

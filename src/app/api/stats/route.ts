@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { fetchDonors, fetchRequests } from '@/lib/store';
+import { connectToDatabase, getLastDatabaseError } from '@/lib/mongodb';
 import { HUMANITARIAN_ACTIVITIES } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const conn = await connectToDatabase();
     const donors = await fetchDonors();
     const requests = await fetchRequests();
 
@@ -24,6 +26,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
+      databaseConnected: Boolean(conn),
+      databaseError: conn ? null : getLastDatabaseError(),
       stats: {
         totalDonors,
         availableDonors,

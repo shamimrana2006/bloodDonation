@@ -65,40 +65,86 @@ export function saveStore(store: AppStorage): void {
 
 // ==================== ASYNC DB METHODS (WITH MONGODB CLOUD SUPPORT) ====================
 
+let isSeededInMemory = false;
+
+export async function ensureDatabaseSeeded(): Promise<void> {
+  if (isSeededInMemory) return;
+  try {
+    const conn = await connectToDatabase();
+    if (!conn) return;
+
+    const [memberCount, deletedCount] = await Promise.all([
+      MemberModel.countDocuments(),
+      DeletedIdModel.countDocuments({ entityType: 'member' }),
+    ]);
+    if (memberCount === 0 && deletedCount === 0) {
+      await MemberModel.insertMany(INITIAL_MEMBERS);
+    }
+
+    const [donorCount, deletedDonorCount] = await Promise.all([
+      DonorModel.countDocuments(),
+      DeletedIdModel.countDocuments({ entityType: 'donor' }),
+    ]);
+    if (donorCount === 0 && deletedDonorCount === 0) {
+      await DonorModel.insertMany(INITIAL_DONORS);
+    }
+
+    const [requestCount, deletedReqCount] = await Promise.all([
+      RequestModel.countDocuments(),
+      DeletedIdModel.countDocuments({ entityType: 'request' }),
+    ]);
+    if (requestCount === 0 && deletedReqCount === 0) {
+      await RequestModel.insertMany(INITIAL_REQUESTS);
+    }
+
+    const [noticeCount, deletedNoticeCount] = await Promise.all([
+      NoticeModel.countDocuments(),
+      DeletedIdModel.countDocuments({ entityType: 'notice' }),
+    ]);
+    if (noticeCount === 0 && deletedNoticeCount === 0) {
+      await NoticeModel.insertMany(INITIAL_NOTICES);
+    }
+
+    isSeededInMemory = true;
+  } catch (err) {
+    console.error('Error in ensureDatabaseSeeded:', err);
+  }
+}
+
 // Donors
 export async function fetchDonors(): Promise<Donor[]> {
   const deletedIds = new Set<string>();
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      await ensureDatabaseSeeded();
+
       const delDocs = await DeletedIdModel.find({ entityType: 'donor' }).lean();
       delDocs.forEach((d: any) => {
         if (d.id) deletedIds.add(d.id.toLowerCase());
       });
 
       const docs = await DonorModel.find({}).sort({ createdAt: -1 }).lean();
-      if (docs && docs.length > 0) {
-        return docs
-          .filter((d: any) => !deletedIds.has((d.id || '').toLowerCase()))
-          .map((d: any) => ({
-            id: d.id,
-            name: d.name,
-            bloodGroup: d.bloodGroup,
-            phone: d.phone,
-            alternatePhone: d.alternatePhone,
-            division: d.division,
-            district: d.district,
-            upazila: d.upazila,
-            address: d.address,
-            lastDonationDate: d.lastDonationDate,
-            totalDonations: d.totalDonations,
-            gender: d.gender,
-            isAvailable: d.isAvailable,
-            isVerified: d.isVerified,
-            notes: d.notes,
-            createdAt: d.createdAt,
-          }));
-      }
+      return docs
+        .filter((d: any) => !deletedIds.has((d.id || '').toLowerCase()))
+        .map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          bloodGroup: d.bloodGroup,
+          phone: d.phone,
+          alternatePhone: d.alternatePhone,
+          division: d.division,
+          district: d.district,
+          upazila: d.upazila,
+          address: d.address,
+          lastDonationDate: d.lastDonationDate,
+          totalDonations: d.totalDonations,
+          gender: d.gender,
+          isAvailable: d.isAvailable,
+          isVerified: d.isVerified,
+          notes: d.notes,
+          createdAt: d.createdAt,
+        }));
     }
   } catch (err) {
     console.error('Error fetching donors from Mongo:', err);
@@ -191,44 +237,44 @@ export async function fetchMembers(): Promise<Member[]> {
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      await ensureDatabaseSeeded();
+
       const delDocs = await DeletedIdModel.find({ entityType: 'member' }).lean();
       delDocs.forEach((d: any) => {
         if (d.id) deletedIds.add(d.id.toLowerCase());
       });
 
       const docs = await MemberModel.find({}).sort({ order: 1, createdAt: -1 }).lean();
-      if (docs && docs.length > 0) {
-        return docs
-          .filter((m: any) => {
-            const mId = (m.id || '').toLowerCase();
-            const mReg = (m.registrationNumber || '').toLowerCase();
-            return !deletedIds.has(mId) && !deletedIds.has(mReg);
-          })
-          .map((m: any) => {
-            let img = m.image;
-            if (!img) {
-              const initMatch = INITIAL_MEMBERS.find((im) => im.id === m.id || im.registrationNumber === m.registrationNumber);
-              if (initMatch && initMatch.image) img = initMatch.image;
-            }
-            return {
-              id: m.id,
-              registrationNumber: m.registrationNumber || `BDAB-${m.id.slice(-4).toUpperCase()}`,
-              name: m.name,
-              role: m.role,
-              committeeLevel: m.committeeLevel || 'সাধারণ সদস্য',
-              phone: m.phone,
-              bloodGroup: m.bloodGroup,
-              district: m.district || 'জামালপুর',
-              upazila: m.upazila || 'সরিষাবাড়ী',
-              address: m.address,
-              bio: m.bio,
-              image: img,
-              joinedDate: m.joinedDate,
-              order: m.order,
-              createdAt: m.createdAt,
-            };
-          });
-      }
+      return docs
+        .filter((m: any) => {
+          const mId = (m.id || '').toLowerCase();
+          const mReg = (m.registrationNumber || '').toLowerCase();
+          return !deletedIds.has(mId) && !deletedIds.has(mReg);
+        })
+        .map((m: any) => {
+          let img = m.image;
+          if (!img) {
+            const initMatch = INITIAL_MEMBERS.find((im) => im.id === m.id || im.registrationNumber === m.registrationNumber);
+            if (initMatch && initMatch.image) img = initMatch.image;
+          }
+          return {
+            id: m.id,
+            registrationNumber: m.registrationNumber || `BDAB-${m.id.slice(-4).toUpperCase()}`,
+            name: m.name,
+            role: m.role,
+            committeeLevel: m.committeeLevel || 'সাধারণ সদস্য',
+            phone: m.phone,
+            bloodGroup: m.bloodGroup,
+            district: m.district || 'জামালপুর',
+            upazila: m.upazila || 'সরিষাবাড়ী',
+            address: m.address,
+            bio: m.bio,
+            image: img,
+            joinedDate: m.joinedDate,
+            order: m.order,
+            createdAt: m.createdAt,
+          };
+        });
     }
   } catch (err) {
     console.error('Error fetching members from Mongo:', err);
@@ -469,34 +515,34 @@ export async function fetchRequests(): Promise<BloodRequest[]> {
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      await ensureDatabaseSeeded();
+
       const delDocs = await DeletedIdModel.find({ entityType: 'request' }).lean();
       delDocs.forEach((d: any) => {
         if (d.id) deletedIds.add(d.id.toLowerCase());
       });
 
       const docs = await RequestModel.find({}).sort({ createdAt: -1 }).lean();
-      if (docs && docs.length > 0) {
-        return docs
-          .filter((r: any) => !deletedIds.has((r.id || '').toLowerCase()))
-          .map((r: any) => ({
-            id: r.id,
-            patientName: r.patientName,
-            bloodGroup: r.bloodGroup,
-            units: r.units,
-            hospitalName: r.hospitalName,
-            district: r.district,
-            upazila: r.upazila,
-            neededDate: r.neededDate,
-            neededTime: r.neededTime,
-            contactPhone: r.contactPhone,
-            alternatePhone: r.alternatePhone,
-            reason: r.reason,
-            urgency: r.urgency,
-            status: r.status,
-            donorAssigned: r.donorAssigned,
-            createdAt: r.createdAt,
-          }));
-      }
+      return docs
+        .filter((r: any) => !deletedIds.has((r.id || '').toLowerCase()))
+        .map((r: any) => ({
+          id: r.id,
+          patientName: r.patientName,
+          bloodGroup: r.bloodGroup,
+          units: r.units,
+          hospitalName: r.hospitalName,
+          district: r.district,
+          upazila: r.upazila,
+          neededDate: r.neededDate,
+          neededTime: r.neededTime,
+          contactPhone: r.contactPhone,
+          alternatePhone: r.alternatePhone,
+          reason: r.reason,
+          urgency: r.urgency,
+          status: r.status,
+          donorAssigned: r.donorAssigned,
+          createdAt: r.createdAt,
+        }));
     }
   } catch (err) {
     console.error('Error fetching requests from Mongo:', err);
@@ -589,24 +635,24 @@ export async function fetchNotices(): Promise<Notice[]> {
   try {
     const conn = await connectToDatabase();
     if (conn) {
+      await ensureDatabaseSeeded();
+
       const delDocs = await DeletedIdModel.find({ entityType: 'notice' }).lean();
       delDocs.forEach((d: any) => {
         if (d.id) deletedIds.add(d.id.toLowerCase());
       });
 
       const docs = await NoticeModel.find({}).sort({ createdAt: -1 }).lean();
-      if (docs && docs.length > 0) {
-        return docs
-          .filter((n: any) => !deletedIds.has((n.id || '').toLowerCase()))
-          .map((n: any) => ({
-            id: n.id,
-            title: n.title,
-            content: n.content,
-            date: n.date,
-            isImportant: n.isImportant,
-            type: n.type,
-          }));
-      }
+      return docs
+        .filter((n: any) => !deletedIds.has((n.id || '').toLowerCase()))
+        .map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          date: n.date,
+          isImportant: n.isImportant,
+          type: n.type,
+        }));
     }
   } catch (err) {
     console.error('Error fetching notices from Mongo:', err);

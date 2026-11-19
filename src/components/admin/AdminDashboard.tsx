@@ -108,6 +108,11 @@ export function AdminDashboard({
   const [isSavingDonor, setIsSavingDonor] = useState<boolean>(false);
   const [isSavingNotice, setIsSavingNotice] = useState<boolean>(false);
 
+  // Database connection status
+  const [isDbConnected, setIsDbConnected] = useState<boolean | null>(null);
+  const [dbErrorMessage, setDbErrorMessage] = useState<string | null>(null);
+  const [isDbGuideOpen, setIsDbGuideOpen] = useState<boolean>(false);
+
   // Status banner / feedback
   const [actionFeedback, setActionFeedback] = useState<{
     type: "success" | "error";
@@ -187,12 +192,21 @@ export function AdminDashboard({
   // Fetch updated data with strict deleted ID filtering
   const refreshData = async () => {
     try {
-      const [dRes, rRes, mRes, nRes] = await Promise.all([
+      const [dRes, rRes, mRes, nRes, sRes] = await Promise.all([
         fetch("/api/donors"),
         fetch("/api/requests"),
         fetch("/api/members"),
         fetch("/api/notices"),
+        fetch("/api/stats"),
       ]);
+
+      if (sRes.ok) {
+        try {
+          const sJson = await sRes.json();
+          setIsDbConnected(Boolean(sJson.databaseConnected));
+          setDbErrorMessage(sJson.databaseError || null);
+        } catch {}
+      }
 
       const deletedIds = getDeletedIds();
 
@@ -1052,9 +1066,25 @@ export function AdminDashboard({
               />
             </div>
             <div className="min-w-0">
-              <h1 className="font-extrabold text-xs sm:text-base leading-tight truncate">
-                ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ
-              </h1>
+              <div className="flex items-center space-x-2">
+                <h1 className="font-extrabold text-xs sm:text-base leading-tight truncate">
+                  ব্লাড ডোনেশন এসোসিয়েশন বাংলাদেশ
+                </h1>
+                {isDbConnected === true && (
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] hidden sm:inline-flex">
+                    ● DB সংযুক্ত
+                  </Badge>
+                )}
+                {isDbConnected === false && (
+                  <Badge
+                    onClick={() => setIsDbGuideOpen(true)}
+                    className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] cursor-pointer hover:bg-amber-500/30 animate-pulse"
+                    title="ক্লিক করে সমাধানের উপায় দেখুন"
+                  >
+                    ● DB বিচ্ছিন্ন
+                  </Badge>
+                )}
+              </div>
               <span className="text-[10px] sm:text-[11px] text-blood-400 font-semibold block truncate">
                 সুপার এডমিন কন্ট্রোল প্যানেল
               </span>
@@ -1090,6 +1120,30 @@ export function AdminDashboard({
 
       {/* Main Admin Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+        {/* Warning Banner when MongoDB Atlas IP whitelist is missing */}
+        {isDbConnected === false && (
+          <div className="mb-6 p-4 sm:p-5 rounded-3xl bg-amber-50 border-2 border-amber-300 text-amber-950 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3">
+            <div className="flex items-start space-x-3">
+              <FaTriangleExclamation className="text-2xl text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-extrabold text-sm sm:text-base text-amber-900">
+                  MongoDB ক্লাউড ডাটাবেজ সংযোগ বিচ্ছিন্ন (IP Whitelist Required)
+                </h4>
+                <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                  MongoDB Atlas-এ Network Access (0.0.0.0/0) সক্রিয় করা নেই। তাই আপনার অ্যাড বা ডিলিট করা ডাটা ক্লাউডে পার্মানেন্ট সেভ হচ্ছে না।
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setIsDbGuideOpen(true)}
+              size="sm"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs whitespace-nowrap flex-shrink-0 shadow-md"
+            >
+              ১ মিনিটে সমাধান করুন
+            </Button>
+          </div>
+        )}
+
         {/* Action Feedback Banner */}
         {actionFeedback && (
           <div
@@ -2500,6 +2554,60 @@ export function AdminDashboard({
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: MongoDB Atlas Setup Guide */}
+      <Dialog open={isDbGuideOpen} onOpenChange={setIsDbGuideOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-900 flex items-center space-x-2">
+              <FaTriangleExclamation className="text-amber-500 flex-shrink-0" />
+              <span>MongoDB ক্লাউড ডাটাবেজ স্থায়ী করার নিয়ম</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2 text-xs sm:text-sm text-slate-700 leading-relaxed">
+            <div className="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 text-xs text-amber-900">
+              <strong>কেন ডাটা কিছুক্ষণ পর স্বয়ংক্রিয় রিস্টোর হয়ে যাচ্ছিল?</strong><br />
+              Vercel সার্ভারলেস ক্লাউডে হোস্ট করা। MongoDB Atlas-এ Network Access (IP Whitelist)-এ <code>0.0.0.0/0</code> পারমিশন দেওয়া না থাকলে Atlas ডাটাবেজ কানেকশন ব্লক করে দেয়। ফলে ডাটা ক্লাউডে পার্মানেন্ট সেভ হতে পারছিল না।
+            </div>
+
+            <p className="font-bold text-slate-900">
+              নিচের ৫টি সাধারণ ধাপে মাত্র ১ মিনিটে এটি সক্রিয় করুন:
+            </p>
+
+            <ol className="list-decimal pl-5 space-y-2.5 font-medium">
+              <li>
+                আপনার ফোনে বা কম্পিউটারে <a href="https://cloud.mongodb.com" target="_blank" rel="noopener noreferrer" className="text-blood-600 font-bold underline">cloud.mongodb.com</a> এ গিয়ে MongoDB Atlas একাউন্টে লগইন করুন।
+              </li>
+              <li>
+                বাম পাশের মেনুর <strong>Security</strong> সেকশন থেকে <strong>&quot;Network Access&quot;</strong> এ যান।
+              </li>
+              <li>
+                ডানপাশে সবুজ রঙের <strong>&quot;+ ADD IP ADDRESS&quot;</strong> বাটনে ক্লিক করুন।
+              </li>
+              <li>
+                পপআপ বক্সে <strong>&quot;ALLOW ACCESS FROM ANYWHERE&quot;</strong> বাটনে ক্লিক করুন (যা স্বয়ংক্রিয়ভাবে <code>0.0.0.0/0</code> বসিয়ে দেবে)।
+              </li>
+              <li>
+                সবশেষে নিচে <strong>&quot;Confirm&quot;</strong> বাটনে চাপ দিন।
+              </li>
+            </ol>
+
+            <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 text-xs text-emerald-900 font-bold">
+              ✅ কনফার্ম করার ১ মিনিটের মধ্যে ডাটাবেজ সংযুক্ত হয়ে যাবে এবং এরপর থেকে নতুন সদস্য অ্যাড, ডিলিট বা এডিট ১০০% পার্মানেন্ট থাকবে—কখনোই আর রিস্টোর বা ডিলিট হবে না!
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <Button
+                onClick={() => setIsDbGuideOpen(false)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs"
+              >
+                ঠিক আছে, বুঝেছি
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

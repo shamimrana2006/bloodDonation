@@ -16,21 +16,27 @@ declare global {
 }
 
 let cached: MongooseCache = global.mongooseCache || { conn: null, promise: null, seeded: false };
+let lastDbError: string | null = null;
 
 if (!global.mongooseCache) {
   global.mongooseCache = cached;
 }
 
+export function getLastDatabaseError(): string | null {
+  return lastDbError;
+}
+
 export async function connectToDatabase(): Promise<typeof mongoose | null> {
   const uri = MONGODB_URI;
 
-  if (cached.conn) {
+  if (cached.conn && cached.conn.connection.readyState === 1) {
+    lastDbError = null;
     return cached.conn;
   }
 
-  if (!cached.promise) {
+  if (!cached.promise || (cached.conn && cached.conn.connection.readyState === 0)) {
     const opts = {
-      bufferCommands: false,
+      bufferCommands: true,
       serverSelectionTimeoutMS: 5000,
       maxPoolSize: 10,
       minPoolSize: 1,
@@ -44,9 +50,12 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
 
   try {
     cached.conn = await cached.promise;
+    lastDbError = null;
   } catch (e: any) {
     cached.promise = null;
-    console.error('MongoDB Atlas Notice:', e?.message || e);
+    cached.conn = null;
+    lastDbError = e?.message || String(e);
+    console.error('MongoDB Atlas Connection Notice:', lastDbError);
     return null;
   }
 

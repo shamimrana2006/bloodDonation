@@ -319,13 +319,26 @@ export function MembersSection({ members }: MembersSectionProps) {
                       </div>
                     </div>
 
-                    {/* Details: District, Phone */}
+                    {/* Details: District, Phone, Parents */}
                     <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100 font-medium">
+                      {member.fatherName && (
+                        <div className="flex items-center space-x-1.5 text-slate-700">
+                          <span className="text-slate-400 font-bold text-[11px]">পিতা:</span>
+                          <span className="font-semibold text-slate-800 truncate">{member.fatherName}</span>
+                        </div>
+                      )}
+
+                      {member.motherName && (
+                        <div className="flex items-center space-x-1.5 text-slate-700">
+                          <span className="text-slate-400 font-bold text-[11px]">মাতা:</span>
+                          <span className="font-semibold text-slate-800 truncate">{member.motherName}</span>
+                        </div>
+                      )}
+
                       <div className="flex items-start space-x-1.5">
                         <FaLocationDot className="text-blood-500 mt-0.5 flex-shrink-0 text-[11px]" />
-                        <span>
-                          {member.district}
-                          {member.upazila && `, ${member.upazila}`}
+                        <span className="truncate">
+                          {member.address || `${member.district}${member.upazila ? `, ${member.upazila}` : ""}`}
                         </span>
                       </div>
 

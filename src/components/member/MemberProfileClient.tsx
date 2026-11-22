@@ -338,6 +338,16 @@ export function MemberProfileClient({
                     <FaShieldHeart className="text-blood-400" />
                     <span>কমিটি: <strong className="text-white">{member.committeeLevel || "কেন্দ্রীয় কমিটি"}</strong></span>
                   </div>
+                  {member.fatherName && (
+                    <div className="flex items-center space-x-1.5">
+                      <span>পিতা: <strong className="text-white">{member.fatherName}</strong></span>
+                    </div>
+                  )}
+                  {member.motherName && (
+                    <div className="flex items-center space-x-1.5">
+                      <span>মাতা: <strong className="text-white">{member.motherName}</strong></span>
+                    </div>
+                  )}
                   <div className="flex items-center space-x-1.5">
                     <FaLocationDot className="text-blood-400" />
                     <span>

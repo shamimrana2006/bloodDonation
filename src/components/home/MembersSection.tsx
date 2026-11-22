@@ -76,7 +76,8 @@ export function MembersSection({ members }: MembersSectionProps) {
         const matchLocation =
           member.district?.toLowerCase().includes(q) ||
           member.upazila?.toLowerCase().includes(q) ||
-          member.address?.toLowerCase().includes(q);
+          member.address?.toLowerCase().includes(q) ||
+          member.fatherName?.toLowerCase().includes(q);
 
         if (!matchReg && !matchPhone && !matchName && !matchRole && !matchLocation) {
           return false;

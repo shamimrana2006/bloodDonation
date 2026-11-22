@@ -124,6 +124,8 @@ export async function POST(request: Request) {
       name: body.name.trim(),
       role: body.role.trim(),
       committeeLevel,
+      fatherName: body.fatherName?.trim() || '',
+      motherName: body.motherName?.trim() || '',
       phone: body.phone.trim(),
       bloodGroup: body.bloodGroup || 'A+',
       district: body.district?.trim() || 'জামালপুর',

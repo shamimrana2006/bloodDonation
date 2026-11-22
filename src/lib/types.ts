@@ -50,6 +50,8 @@ export interface Member {
   name: string;
   role: string; // e.g. প্রতিষ্ঠাতা ও পরিচালক, সভাপতি, সাধারণ সম্পাদক, সহ-সভাপতি, সাংগঠনিক সম্পাদক
   committeeLevel: CommitteeLevel; // 'কেন্দ্রীয় কমিটি' | 'জেলা কমিটি' | 'উপজেলা কমিটি' | 'সাধারণ সদস্য'
+  fatherName?: string; // পিতার নাম
+  motherName?: string; // মাতার নাম
   phone: string;
   bloodGroup?: BloodGroup;
   division?: string;

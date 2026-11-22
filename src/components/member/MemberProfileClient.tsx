@@ -430,6 +430,18 @@ export function MemberProfileClient({
                       {member.registrationNumber || member.id}
                     </span>
                   </div>
+                  {member.fatherName && (
+                    <div className="flex justify-between py-1 border-b border-slate-200/50">
+                      <span className="text-slate-500 font-bold">পিতার নাম:</span>
+                      <span className="font-bold text-slate-800">{member.fatherName}</span>
+                    </div>
+                  )}
+                  {member.motherName && (
+                    <div className="flex justify-between py-1 border-b border-slate-200/50">
+                      <span className="text-slate-500 font-bold">মাতার নাম:</span>
+                      <span className="font-bold text-slate-800">{member.motherName}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-1">
                     <span className="text-slate-500 font-bold">যুক্ত হওয়ার সময়:</span>
                     <span className="font-bold text-slate-700">

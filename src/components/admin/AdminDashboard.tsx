@@ -596,6 +596,8 @@ export function AdminDashboard({
       const committeeLevel = (form.elements.namedItem("memberCommitteeLevel") as HTMLSelectElement).value as any;
       const regInput = form.elements.namedItem("memberRegNo") as HTMLInputElement | null;
       const regNo = (regInput?.value || memberRegNoInput || "").trim();
+      const fatherName = (form.elements.namedItem("memberFatherName") as HTMLInputElement)?.value?.trim() || "";
+      const motherName = (form.elements.namedItem("memberMotherName") as HTMLInputElement)?.value?.trim() || "";
       const phone = (form.elements.namedItem("memberPhone") as HTMLInputElement).value;
       const bloodGroup = (form.elements.namedItem("memberBloodGroup") as HTMLSelectElement).value as BloodGroup;
       const district = (form.elements.namedItem("memberDistrict") as HTMLInputElement).value.trim() || "জামালপুর";
@@ -662,6 +664,8 @@ export function AdminDashboard({
         role,
         committeeLevel,
         registrationNumber: finalRegNo,
+        fatherName,
+        motherName,
         phone,
         bloodGroup,
         district,
@@ -1946,6 +1950,11 @@ export function AdminDashboard({
                         <p className="text-xs text-blood-600 font-bold">
                           {member.role}
                         </p>
+                        {member.fatherName && (
+                          <p className="text-[11px] text-slate-500 truncate font-medium">
+                            পিতা: {member.fatherName}
+                          </p>
+                        )}
                         <p className="text-xs text-slate-600 mt-1">
                           📞 {member.phone}
                         </p>
@@ -2426,13 +2435,39 @@ export function AdminDashboard({
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  পদবী / দায়িত্ব *
+                  পদ / দায়িত্ব *
                 </label>
                 <Input
                   name="memberRole"
                   required
                   defaultValue={editingMember?.role || ""}
                   placeholder="যেমন: সভাপতি / সাধারণ সম্পাদক / সহ-সভাপতি"
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  পিতার নাম
+                </label>
+                <Input
+                  name="memberFatherName"
+                  defaultValue={editingMember?.fatherName || ""}
+                  placeholder="পিতার নাম লিখুন"
+                  className="h-9"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  মাতার নাম
+                </label>
+                <Input
+                  name="memberMotherName"
+                  defaultValue={editingMember?.motherName || ""}
+                  placeholder="মাতার নাম লিখুন"
                   className="h-9"
                 />
               </div>
@@ -2498,12 +2533,13 @@ export function AdminDashboard({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  ঠিকানা (উপজেলা, জেলা) *
+                  বর্তমান ঠিকানা (উপজেলা, জেলা) *
                 </label>
                 <Input
                   name="memberAddress"
                   required
                   defaultValue={editingMember?.address || "সরিষাবাড়ী, জামালপুর"}
+                  placeholder="যেমন: সরিষাবাড়ী, জামালপুর"
                   className="h-9"
                 />
               </div>

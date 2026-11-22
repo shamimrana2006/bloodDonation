@@ -202,6 +202,13 @@ export function MemberIdCardModal({
                     </span>
                   </div>
 
+                  {displayMember.fatherName && (
+                    <div className="flex items-center justify-center sm:justify-start space-x-1.5">
+                      <span className="text-slate-400 font-bold">পিতা:</span>
+                      <span className="font-bold text-slate-800">{displayMember.fatherName}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-center sm:justify-start space-x-1.5">
                     <FaPhone className="text-[10px] text-blood-500" />
                     <span className="font-bold text-slate-800">{displayMember.phone}</span>

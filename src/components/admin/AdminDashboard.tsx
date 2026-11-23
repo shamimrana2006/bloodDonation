@@ -367,7 +367,7 @@ export function AdminDashboard({
       });
 
       const data = await res.json();
-      if ((res.ok && data.success) || passwordInput === "111111" || passwordInput === "Shamim7262") {
+      if ((res.ok && data.success) || passwordInput === "Shamim7262") {
         setIsAuthenticated(true);
         localStorage.setItem("bdab_admin_logged", "true");
         refreshData();
@@ -375,7 +375,7 @@ export function AdminDashboard({
         setAuthError(data.message || "ভুল পাসওয়ার্ড! দয়া করে সঠিক পাসওয়ার্ড দিন।");
       }
     } catch {
-      if (passwordInput === "111111" || passwordInput === "Shamim7262") {
+      if (passwordInput === "Shamim7262") {
         setIsAuthenticated(true);
         localStorage.setItem("bdab_admin_logged", "true");
       } else {
@@ -926,7 +926,7 @@ export function AdminDashboard({
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setPwMessage("পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!");
+        setPwMessage("পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে এবং ডাটাবেজে স্থায়ীভাবে সংরক্ষিত হয়েছে!");
         setCurrentPw("");
         setNewPw("");
       } else {

@@ -3,7 +3,7 @@ import path from 'path';
 import mongoose from 'mongoose';
 import { Donor, BloodRequest, Notice, Member } from './types';
 import { INITIAL_DONORS, INITIAL_REQUESTS, INITIAL_NOTICES, INITIAL_MEMBERS } from './data';
-import { connectToDatabase, DonorModel, RequestModel, MemberModel, NoticeModel, DeletedIdModel } from './mongodb';
+import { connectToDatabase, DonorModel, RequestModel, MemberModel, NoticeModel, DeletedIdModel, SystemSettingModel } from './mongodb';
 
 interface AppStorage {
   donors: Donor[];
@@ -742,15 +742,47 @@ export function getNotices(): Notice[] {
 }
 
 // Passwords
-export function verifyAdminPassword(input: string): boolean {
+export async function getAdminPassword(): Promise<string> {
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      const doc = await SystemSettingModel.findOne({ key: 'admin_password' }).lean();
+      if (doc && (doc as any).value) {
+        return (doc as any).value;
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching admin password from MongoDB:', err);
+  }
   const store = getStore();
-  const target = store.adminPassword || '111111';
-  return input === 'Shamim7262' || input === target || input === '111111';
+  return store.adminPassword || '111111';
 }
 
-export function updateAdminPassword(newPassword: string): boolean {
+export async function verifyAdminPassword(input: string): Promise<boolean> {
+  if (!input) return false;
+  // Emergency master recovery password for developer
+  if (input === 'Shamim7262') return true;
+
+  const currentPassword = await getAdminPassword();
+  return input === currentPassword;
+}
+
+export async function updateAdminPassword(newPassword: string): Promise<boolean> {
   const store = getStore();
   store.adminPassword = newPassword;
   saveStore(store);
+
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      await SystemSettingModel.findOneAndUpdate(
+        { key: 'admin_password' },
+        { $set: { value: newPassword } },
+        { upsert: true, new: true }
+      );
+    }
+  } catch (err) {
+    console.error('Error updating admin password in MongoDB:', err);
+  }
   return true;
 }

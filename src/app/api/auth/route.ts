@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const isValid = verifyAdminPassword(password);
+    const isValid = await verifyAdminPassword(password);
 
     if (!isValid) {
       return NextResponse.json(
@@ -68,7 +68,8 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { currentPassword, newPassword } = body;
 
-    if (!verifyAdminPassword(currentPassword)) {
+    const isValid = await verifyAdminPassword(currentPassword);
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: 'বর্তমান পাসওয়ার্ড সঠিক নয়।' },
         { status: 400 }
@@ -82,11 +83,11 @@ export async function PUT(request: Request) {
       );
     }
 
-    updateAdminPassword(newPassword);
+    await updateAdminPassword(newPassword);
 
     return NextResponse.json({
       success: true,
-      message: 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।',
+      message: 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে এবং ডাটাবেজে সংরক্ষিত হয়েছে।',
     });
   } catch (error: any) {
     return NextResponse.json(

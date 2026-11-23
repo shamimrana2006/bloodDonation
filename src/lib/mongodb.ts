@@ -142,3 +142,10 @@ const DeletedIdSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export const DeletedIdModel = mongoose.models.DeletedId || mongoose.model('DeletedId', DeletedIdSchema);
+
+const SystemSettingSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: String, required: true },
+}, { timestamps: true });
+
+export const SystemSettingModel = mongoose.models.SystemSetting || mongoose.model('SystemSetting', SystemSettingSchema);
